@@ -10,6 +10,8 @@ include_directories(src/)
 set(SOURCE_FILES
         src/util/trees.c
         src/barrier.c
-        test/barrier_test.c)
+        src/broadcast.c
+        test/barrier_test.c
+        test/broadcast_test.c)
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})
