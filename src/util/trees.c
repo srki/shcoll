@@ -1,10 +1,12 @@
 #include "trees.h"
 
 void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_info) {
+    int mask;
+    int child;
+
     node_info->parent = node == 0 ? -1 : node & (node - 1);
 
     /* Lowest bit */
-    int mask;
     if (node == 0) {
         mask = 1 << (sizeof(int) * 8 - 2);
     } else {
@@ -15,7 +17,7 @@ void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_
     node_info->children_num = 0;
 
     while (mask != 0) {
-        int child = node | mask;
+        child = node | mask;
         if (child < tree_size) {
             node_info->children[node_info->children_num++] = child;
         }

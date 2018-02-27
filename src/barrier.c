@@ -16,17 +16,20 @@ inline static void barrier_sync_helper_linear(int start, int log2stride, int siz
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
-    if (start == me) {
-        const long npokes = size - 1;
-        long poke = SHMEM_SYNC_VALUE + 1;
+    const long npokes = size - 1;
+    long poke = SHMEM_SYNC_VALUE + 1;
 
+    int i;
+    int pe;
+
+    if (start == me) {
         /* wait for the rest of the AS to poke me */
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes);
         *pSync = SHMEM_SYNC_VALUE;
 
         /* send acks out */
-        int pe = start + stride;
-        for (int i = 1; i < size; i += 1) {
+        pe = start + stride;
+        for (i = 1; i < size; i += 1) {
             shmem_long_put(pSync, &poke, 1, pe);
             pe += stride;
         }
@@ -48,15 +51,18 @@ inline static void barrier_sync_helper_complete_tree(int start, int log2stride, 
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
+    int child;
+    long npokes;
+    node_info_complete_t node;
+
     /* Get my index in the active set */
     const int me_as = (me - start) / stride;
 
     /* Get node info */
-    node_info_complete_t node;
     get_node_info_complete(size, tree_degree_barrier, me_as, &node);
 
     /* Wait for pokes from the children */
-    long npokes = node.children_num;
+    npokes = node.children_num;
     if (npokes != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes);
     }
@@ -72,7 +78,7 @@ inline static void barrier_sync_helper_complete_tree(int start, int log2stride, 
     /* Clear pSync and poke the children */
     *pSync = SHMEM_SYNC_VALUE;
 
-    for (int child = node.children_begin; child != node.children_end; child++) {
+    for (child = node.children_begin; child != node.children_end; child++) {
         shmem_long_atomic_inc(pSync, start + child * stride);
     }
 }
@@ -85,15 +91,18 @@ inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, 
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
+    int i;
+    long npokes;
+    node_info_binomial_t node; /* TODO: try static */
+
     /* Get my index in the active set */
     const int me_as = (me - start) / stride;
 
     /* Get node info */
-    node_info_binomial_t node; /* TODO: try static */
     get_node_info_binomial(size, me_as, &node);
 
     /* Wait for pokes from the children */
-    long npokes = node.children_num;
+    npokes = node.children_num;
     if (npokes != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes);
     }
@@ -109,7 +118,7 @@ inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, 
     /* Clear pSync and poke the children */
     *pSync = SHMEM_SYNC_VALUE;
 
-    for (int i = 0; i < node.children_num; i++) {
+    for (i = 0; i < node.children_num; i++) {
         shmem_long_atomic_inc(pSync, start + node.children[i] * stride);
     }
 }
@@ -122,11 +131,15 @@ inline static void barrier_sync_helper_dissemination(int start, int log2stride, 
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
+    int round;
+    int distance;
+    int target_as;
+
     /* Calculate my index in the active set */
     const int me_as = (me - start) / stride;
 
-    for (int round = 0, distance = 1; distance < size; round++, distance <<= 1) {
-        int target_as = (me_as + distance) % size;
+    for (round = 0, distance = 1; distance < size; round++, distance <<= 1) {
+        target_as = (me_as + distance) % size;
 
         /* Poke the target for the current round */
         shmem_long_atomic_inc(&pSync[round], start + target_as * stride);
