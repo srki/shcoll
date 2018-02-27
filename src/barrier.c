@@ -2,13 +2,17 @@
 #include <shmem.h>
 #include "util/trees.h"
 
-static int _tree_degree = 2;
+static int tree_degree_barrier = 2;
+
+void shcoll_set_tree_degree(int tree_degree) {
+    tree_degree_barrier = tree_degree;
+}
 
 /*
  * Linear barrier implementation
  */
 
-inline static void _barrier_sync_helper_linear(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_linear(int start, int log2stride, int size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
@@ -40,7 +44,7 @@ inline static void _barrier_sync_helper_linear(int start, int log2stride, int si
  * Complete tree barrier implementation
  */
 
-inline static void _barrier_sync_helper_complete_tree(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_complete_tree(int start, int log2stride, int size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
@@ -49,7 +53,7 @@ inline static void _barrier_sync_helper_complete_tree(int start, int log2stride,
 
     /* Get node info */
     node_info_complete_t node;
-    get_node_info_complete(size, _tree_degree, me_as, &node);
+    get_node_info_complete(size, tree_degree_barrier, me_as, &node);
 
     /* Wait for pokes from the children */
     long npokes = node.children_num;
@@ -77,7 +81,7 @@ inline static void _barrier_sync_helper_complete_tree(int start, int log2stride,
  * Binomial tree barrier implementation
  */
 
-inline static void _barrier_sync_helper_binomial_tree(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, int size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
@@ -114,7 +118,7 @@ inline static void _barrier_sync_helper_binomial_tree(int start, int log2stride,
  * Dissemination barrier implementation
  */
 
-inline static void _barrier_sync_helper_dissemination(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_dissemination(int start, int log2stride, int size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
@@ -136,9 +140,6 @@ inline static void _barrier_sync_helper_dissemination(int start, int log2stride,
     }
 }
 
-void shcoll_set_tree_degree(int tree_degree) {
-    _tree_degree = tree_degree;
-}
 
 static long barrier_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
 static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
@@ -156,10 +157,10 @@ static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
         shmem_quiet();                                                          \
     }
 
-SHCOLL_BARRIER_DEFINITION(linear, _barrier_sync_helper_linear)
-SHCOLL_BARRIER_DEFINITION(complete_tree, _barrier_sync_helper_complete_tree)
-SHCOLL_BARRIER_DEFINITION(binomial_tree, _barrier_sync_helper_binomial_tree)
-SHCOLL_BARRIER_DEFINITION(dissemination, _barrier_sync_helper_dissemination)
+SHCOLL_BARRIER_DEFINITION(linear, barrier_sync_helper_linear)
+SHCOLL_BARRIER_DEFINITION(complete_tree, barrier_sync_helper_complete_tree)
+SHCOLL_BARRIER_DEFINITION(binomial_tree, barrier_sync_helper_binomial_tree)
+SHCOLL_BARRIER_DEFINITION(dissemination, barrier_sync_helper_dissemination)
 
 
 #define SHCOLL_SYNC_DEFINITION(_name, _helper)                                  \
@@ -174,7 +175,7 @@ SHCOLL_BARRIER_DEFINITION(dissemination, _barrier_sync_helper_dissemination)
         /* TODO: memory fence */                                                \
     }
 
-SHCOLL_SYNC_DEFINITION(linear, _barrier_sync_helper_linear)
-SHCOLL_SYNC_DEFINITION(complete_tree, _barrier_sync_helper_complete_tree)
-SHCOLL_SYNC_DEFINITION(binomial_tree, _barrier_sync_helper_binomial_tree)
-SHCOLL_SYNC_DEFINITION(dissemination, _barrier_sync_helper_dissemination)
+SHCOLL_SYNC_DEFINITION(linear, barrier_sync_helper_linear)
+SHCOLL_SYNC_DEFINITION(complete_tree, barrier_sync_helper_complete_tree)
+SHCOLL_SYNC_DEFINITION(binomial_tree, barrier_sync_helper_binomial_tree)
+SHCOLL_SYNC_DEFINITION(dissemination, barrier_sync_helper_dissemination)

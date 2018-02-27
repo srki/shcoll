@@ -3,7 +3,7 @@ project(OpenSHMEM-Collective-Routines)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(CMAKE_C_COMPILER oshcc)
+set(CMAKE_C_COMPILER /Users/sm108/libs/SOS/_install/bin/oshcc)
 
 include_directories(src/)
 

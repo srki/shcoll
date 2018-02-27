@@ -2,14 +2,14 @@
 #include <shmem.h>
 #include "util/trees.h"
 
-static int _tree_degree_broadcast = 2;
+static int tree_degree_broadcast = 2;
 
 void scholl_set_broadcast_tree_degree(int tree_degree) {
-    _tree_degree_broadcast = tree_degree;
+    tree_degree_broadcast = tree_degree;
 }
 
 
-inline static void _broadcast_helper_linear(void *target, const void *source, size_t nbytes, int PE_root,
+inline static void broadcast_helper_linear(void *target, const void *source, size_t nbytes, int PE_root,
                                             int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
     const int root = (PE_root * stride) + PE_start;
@@ -23,7 +23,7 @@ inline static void _broadcast_helper_linear(void *target, const void *source, si
     shmem_quiet();
 }
 
-inline static void _broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
+inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
                                                    int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
@@ -41,7 +41,7 @@ inline static void _broadcast_helper_complete_tree(void *target, const void *sou
 
     /* Get information about children */
     node_info_complete_t node;
-    get_node_info_complete(PE_size, _tree_degree_broadcast, me_as, &node);
+    get_node_info_complete(PE_size, tree_degree_broadcast, me_as, &node);
 
     /* Wait for the data form the parent */
     if (me_as != 0) {
@@ -80,7 +80,7 @@ inline static void _broadcast_helper_complete_tree(void *target, const void *sou
     *pSync = SHMEM_SYNC_VALUE;
 }
 
-inline static void _broadcast_helper_binomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
+inline static void broadcast_helper_binomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
                                               int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
@@ -139,11 +139,11 @@ inline static void _broadcast_helper_binomial_tree(void *target, const void *sou
                 PE_root, PE_start, logPE_stride, PE_size, pSync);               \
     }                                                                           \
 
-SHCOLL_BROADCAST_DEFINITION(linear, _broadcast_helper_linear, 32)
-SHCOLL_BROADCAST_DEFINITION(linear, _broadcast_helper_linear, 64)
+SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 32)
+SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 64)
 
-SHCOLL_BROADCAST_DEFINITION(complete_tree, _broadcast_helper_complete_tree, 32)
-SHCOLL_BROADCAST_DEFINITION(complete_tree, _broadcast_helper_complete_tree, 64)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 32)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 64)
 
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, _broadcast_helper_binomial_tree, 32)
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, _broadcast_helper_binomial_tree, 64)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 32)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 64)
