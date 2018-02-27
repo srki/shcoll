@@ -1,9 +1,4 @@
-//
-// Created by Srđan Milaković on 2/8/18.
-//
-
 #include "barrier.h"
-
 #include <shmem.h>
 #include "util/trees.h"
 
@@ -49,28 +44,28 @@ inline static void _barrier_sync_helper_complete_tree(int start, int log2stride,
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
-    // Get my index in the active set
+    /* Get my index in the active set */
     const int me_as = (me - start) / stride;
 
-    // Get node info
+    /* Get node info */
     node_info_complete_t node;
     get_node_info_complete(size, _tree_degree, me_as, &node);
 
-    // Wait for pokes from the children
+    /* Wait for pokes from the children */
     long npokes = node.children_num;
     if (npokes != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes);
     }
 
     if (node.parent != -1) {
-        // Poke the parent exists
+        /* Poke the parent exists */
         shmem_long_atomic_inc(pSync, start + node.parent * stride);
 
-        // Wait for the poke from parent
+        /* Wait for the poke from parent */
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes + 1);
     }
 
-    // Clear pSync and poke the children
+    /* Clear pSync and poke the children */
     *pSync = SHMEM_SYNC_VALUE;
 
     for (int child = node.children_begin; child != node.children_end; child++) {
@@ -86,28 +81,28 @@ inline static void _barrier_sync_helper_binomial_tree(int start, int log2stride,
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
-    // Get my index in the active set
+    /* Get my index in the active set */
     const int me_as = (me - start) / stride;
 
-    // Get node info
-    node_info_binomial_t node; // TODO: try static
+    /* Get node info */
+    node_info_binomial_t node; /* TODO: try static */
     get_node_info_binomial(size, me_as, &node);
 
-    // Wait for pokes from the children
+    /* Wait for pokes from the children */
     long npokes = node.children_num;
     if (npokes != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes);
     }
 
     if (node.parent != -1) {
-        // Poke the parent exists
+        /* Poke the parent exists */
         shmem_long_atomic_inc(pSync, start + node.parent * stride);
 
-        // Wait for the poke from parent
+        /* Wait for the poke from parent */
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + npokes + 1);
     }
 
-    // Clear pSync and poke the children
+    /* Clear pSync and poke the children */
     *pSync = SHMEM_SYNC_VALUE;
 
     for (int i = 0; i < node.children_num; i++) {
@@ -123,20 +118,20 @@ inline static void _barrier_sync_helper_dissemination(int start, int log2stride,
     const int me = shmem_my_pe();
     const int stride = 1 << log2stride;
 
-    // Calculate my index in the active set
+    /* Calculate my index in the active set */
     const int me_as = (me - start) / stride;
 
     for (int round = 0, distance = 1; distance < size; round++, distance <<= 1) {
         int target_as = (me_as + distance) % size;
 
-        // Poke the target for the current round
+        /* Poke the target for the current round */
         shmem_long_atomic_inc(&pSync[round], start + target_as * stride);
 
-        // Wait until poked in this round
+        /* Wait until poked in this round */
         shmem_long_wait_until(&pSync[round], SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
 
-        // Reset pSync element, fadd is used instead of add because we have to
-        // be sure that reset happens before next invocation of barrier
+        /* Reset pSync element, fadd is used instead of add because we have to
+           be sure that reset happens before next invocation of barrier */
         shmem_long_atomic_fetch_add(&pSync[round], -1, me);
     }
 }

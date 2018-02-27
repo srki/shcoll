@@ -1,7 +1,3 @@
-//
-// Created by Srdan Milakovic on 2/9/18.
-//
-
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_BROADCAST_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_BROADCAST_H
 
@@ -9,7 +5,7 @@
 
 #define SHCOLL_BCAST_SYNC_SIZE 1
 
-// TODO: move
+/* TODO: move */
 #define SHCOLL_SYNC_VALUE 0
 
 void scholl_set_broadcast_tree_degree(int tree_degree);
@@ -29,4 +25,4 @@ SHCOLL_BROADCAST_DECLARATION(complete_tree, 64)
 SHCOLL_BROADCAST_DECLARATION(binomial_tree, 32)
 SHCOLL_BROADCAST_DECLARATION(binomial_tree, 64)
 
-#endif //OPENSHMEM_COLLECTIVE_ROUTINES_BROADCAST_H
+#endif /* OPENSHMEM_COLLECTIVE_ROUTINES_BROADCAST_H */

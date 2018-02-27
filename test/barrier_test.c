@@ -1,9 +1,4 @@
-//
-// Created by Srđan Milaković on 2/9/18.
-//
-
 #include "barrier.h"
-#include <shmem.h>
 #include <time.h>
 #include <stdio.h>
 

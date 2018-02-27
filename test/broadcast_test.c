@@ -1,7 +1,3 @@
-//
-// Created by Srdan Milakovic on 2/14/18.
-//
-
 #include "broadcast.h"
 
 #include <time.h>

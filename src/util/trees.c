@@ -1,13 +1,9 @@
-//
-// Created by Srđan Milaković on 2/8/18.
-//
-
 #include "trees.h"
 
 void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_info) {
     node_info->parent = node == 0 ? -1 : node & (node - 1);
 
-    // Lowest bit
+    /* Lowest bit */
     int mask;
     if (node == 0) {
         mask = 1 << (sizeof(int) * 8 - 2);

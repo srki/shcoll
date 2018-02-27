@@ -1,10 +1,6 @@
-//
-// Created by Srdan Milakovic on 2/9/18.
-//
-
+#include "broadcast.h"
 #include <shmem.h>
 #include "util/trees.h"
-#include "broadcast.h"
 
 static int _tree_degree_broadcast = 2;
 
@@ -19,7 +15,7 @@ inline static void _broadcast_helper_linear(void *target, const void *source, si
     const int root = (PE_root * stride) + PE_start;
     const int me = shmem_my_pe();
 
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync); // TODO: use shcoll barrier?
+    shmem_barrier(PE_start, logPE_stride, PE_size, pSync); /* TODO: use shcoll barrier? */
     if (me != root) {
         shmem_char_get(target, source, nbytes, root);
     }
@@ -32,29 +28,29 @@ inline static void _broadcast_helper_complete_tree(void *target, const void *sou
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
-    // Get my index in the active set
+    /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
 
-    // Get my index after tree root and broadcast root swap
-    // TODO: remove if
+    /* Get my index after tree root and broadcast root swap */
+    /* TODO: remove if */
     if (me_as == PE_root) {
         me_as = 0;
     } else if (me_as == 0) {
         me_as = PE_root;
     }
 
-    // Get information about children
+    /* Get information about children */
     node_info_complete_t node;
     get_node_info_complete(PE_size, _tree_degree_broadcast, me_as, &node);
 
-    // Wait for the data form the parent
+    /* Wait for the data form the parent */
     if (me_as != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
         source = target;
 
-        // Send ack
+        /* Send ack */
         int parent = node.parent;
-        // TODO: remove if
+        /* TODO: remove if */
         if (parent == PE_root) {
             parent = 0;
         } else if (parent == 0) {
@@ -63,7 +59,7 @@ inline static void _broadcast_helper_complete_tree(void *target, const void *sou
         shmem_long_atomic_inc(pSync, PE_start + parent * stride);
     }
 
-    // Send data to children
+    /* Send data to children */
     if (node.children_num != 0) {
         for (int child = node.children_begin; child != node.children_end; child++) {
             int dst = PE_start + (child == PE_root ? 0 : child) * stride;
@@ -89,25 +85,25 @@ inline static void _broadcast_helper_binomial_tree(void *target, const void *sou
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
-    // Get my index in the active set
+    /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
 
-    // Get my index after tree root and broadcast root swap
+    /* Get my index after tree root and broadcast root swap */
     if (me_as == PE_root) {
         me_as = 0;
     } else if (me_as == 0) {
         me_as = PE_root;
     }
 
-    // Get information about children
+    /* Get information about children */
     node_info_binomial_t node;
     get_node_info_binomial(PE_size, me_as, &node);
 
-    // Wait for the data form the parent
+    /* Wait for the data form the parent */
     if (me_as != 0) {
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
         source = target;
-        // Send ack
+        /* Send ack */
         int parent = node.parent;
         if (parent == PE_root) {
             parent = 0;
@@ -117,7 +113,7 @@ inline static void _broadcast_helper_binomial_tree(void *target, const void *sou
         shmem_long_atomic_inc(pSync, PE_start + parent * stride);
     }
 
-    // Send data to children
+    /* Send data to children */
     if (node.children_num != 0) {
         for (int i = 0; i < node.children_num; i++) {
             int dst = PE_start + (node.children[i] == PE_root ? 0 : node.children[i]) * stride;

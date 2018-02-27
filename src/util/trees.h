@@ -1,7 +1,3 @@
-//
-// Created by Srđan Milaković on 2/8/18.
-//
-
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H
 
@@ -29,4 +25,4 @@ typedef struct _node_info_complete node_info_complete_t;
 
 void get_node_info_complete(int tree_size, int tree_degree, int node, node_info_complete_t *node_info);
 
-#endif //OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H
+#endif /* OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H */

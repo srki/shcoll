@@ -1,12 +1,5 @@
-//
-// Created by Srđan Milaković on 2/8/18.
-//
-
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
-
-
-#include "barrier.h"
 
 #include <shmem.h>
 
@@ -40,4 +33,4 @@ SHCOLL_SYNC_DECLARATION(complete_tree)
 SHCOLL_SYNC_DECLARATION(binomial_tree)
 SHCOLL_SYNC_DECLARATION(dissemination)
 
-#endif //OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
+#endif /* OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H */
