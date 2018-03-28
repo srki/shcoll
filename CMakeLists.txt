@@ -11,7 +11,9 @@ set(SOURCE_FILES
         src/util/trees.c
         src/barrier.c
         src/broadcast.c
+        src/reduction.c
         test/barrier_test.c
-        test/broadcast_test.c)
+        test/broadcast_test.c
+        test/reduction_test.c)
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})
