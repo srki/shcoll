@@ -78,7 +78,7 @@ int main(int argc, char *argv) {
     printf("Linear: %lf\n", test_broadcast(shcoll_linear_broadcast32, iterations, count));
     printf("Binomial: %lf\n", test_broadcast(shcoll_binomial_tree_broadcast32, iterations, count));
     for (int degree = 2; degree <= 8; degree *= 2) {
-        scholl_set_broadcast_tree_degree(degree);
+        shcoll_set_broadcast_tree_degree(degree);
         printf("Complete %d: %lf\n", degree, test_broadcast(shcoll_complete_tree_broadcast32, iterations, count));
     }
 

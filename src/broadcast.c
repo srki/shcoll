@@ -4,7 +4,7 @@
 
 static int tree_degree_broadcast = 2;
 
-void scholl_set_broadcast_tree_degree(int tree_degree) {
+void shcoll_set_broadcast_tree_degree(int tree_degree) {
     tree_degree_broadcast = tree_degree;
 }
 
@@ -147,11 +147,17 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
                 PE_root, PE_start, logPE_stride, PE_size, pSync);               \
     }                                                                           \
 
+SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 8)
+SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 16)
 SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 32)
 SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 64)
 
+SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 8)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 16)
 SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 32)
 SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 64)
 
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 8)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 16)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 32)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 64)
