@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define VERIFYx
+#define VERIFY
 #define PRINTx
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
@@ -86,7 +86,7 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count) {
 }
 
 
-int main(int argc, char *argv) {
+int main(int argc, char *argv[]) {
     int iterations = 10;
     size_t count;
 
@@ -98,14 +98,14 @@ int main(int argc, char *argv) {
 
     for (count = 32; count <= 32 * 1024 * 1024; count *= 32) {
         if (shmem_my_pe() == 0) {
-            fprintf(stderr, "Rec_dbl  [%lu]: %lf\n", count, test_reduce(int_sum_to_all_helper_rec_dbl, iterations, count));
             fprintf(stderr, "OpenSHMEM[%lu]: %lf\n", count, test_reduce(shmem_int_sum_to_all, iterations, count));
-            fprintf(stderr, "Linear   [%lu]: %lf\n", count, test_reduce(int_sum_to_all_helper_linear, iterations, count));
+            fprintf(stderr, "Linear[%lu]: %lf\n", count, test_reduce(shcoll_int_sum_to_all_linear, iterations, count));
+            fprintf(stderr, "Binomial[%lu]: %lf\n", count, test_reduce(shcoll_int_sum_to_all_binomial, iterations, count));
             fprintf(stderr, "\n");
         } else {
             test_reduce(shmem_int_sum_to_all, iterations, count);
-            test_reduce(int_sum_to_all_helper_linear, iterations, count);
-            test_reduce(int_sum_to_all_helper_rec_dbl, iterations, count);
+            test_reduce(shcoll_int_sum_to_all_linear, iterations, count);
+            test_reduce(shcoll_int_sum_to_all_binomial, iterations, count);
         }
     }
 
