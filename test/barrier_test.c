@@ -31,7 +31,7 @@ void test(barrier_impl barrier, int iterations, int log2stride, char *name) {
     shmem_barrier_all();
 }
 
-int main(int argc, char *argv) {
+int main(int argc, char **argv) {
     int iterations = 25000;
 
     shmem_init();

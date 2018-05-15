@@ -64,7 +64,7 @@ double test_broadcast(broadcast_impl broadcast, int iterations, size_t count) {
 }
 
 
-int main(int argc, char *argv) {
+int main(int argc, char *argv[]) {
     int iterations = 10;
     size_t count = 8;
 
