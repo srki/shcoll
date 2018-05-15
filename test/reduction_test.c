@@ -6,7 +6,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define VERIFY
+#define VERIFYx
+#define PRINTx
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 
@@ -21,11 +22,11 @@ typedef void (*reduce_impl)(int *, const int *, int, int, int, int, int *, long 
 
 
 double test_reduce(reduce_impl reduce, int iterations, size_t count) {
-    long *pSyc = shmem_malloc(SHMEM_REDUCE_SYNC_SIZE * sizeof(long));
+    long *pSync = shmem_malloc(SHMEM_REDUCE_SYNC_SIZE * sizeof(long));
     int *pWrk = shmem_malloc(MAX(SHMEM_REDUCE_MIN_WRKDATA_SIZE, count) * sizeof(int));
 
-    for (int i = 0; i < SHMEM_REDUCE_MIN_WRKDATA_SIZE; i++) {
-        pSyc[i] = SHMEM_SYNC_VALUE;
+    for (int i = 0; i < SHMEM_REDUCE_SYNC_SIZE; i++) {
+        pSync[i] = SHMEM_SYNC_VALUE;
     }
 
     shmem_barrier_all();
@@ -41,8 +42,7 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count) {
     unsigned long long start = current_time_ns();
 
     for (int i = 0; i < iterations; i++) {
-        reduce(dst, src, (int) count, 0, 0, shmem_n_pes(), pWrk, pSyc);
-
+        reduce(dst, src, (int) count, 0, 0, shmem_n_pes(), pWrk, pSync);
         shmem_sync_all();
 
         #ifdef PRINT
@@ -57,7 +57,7 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count) {
             str += sprintf(str, "%d ", dst[j]);
         }
 
-        printf("%s\n", print);
+        fprintf(stderr, "%s\n", print);
 
         free(print);
         #endif
@@ -76,19 +76,38 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count) {
     unsigned long long end = current_time_ns();
 
     shmem_barrier_all();
-    shmem_free(pSyc);
+    shmem_free(pSync);
     shmem_free(pWrk);
+    shmem_free(src);
+    shmem_free(dst);
     shmem_barrier_all();
 
     return (end - start) / 1e9;
 }
 
+
 int main(int argc, char *argv) {
+    int iterations = 10;
+    size_t count;
+
     shmem_init();
 
-    //test_reduce(shmem_int_sum_to_all, 1, 10);
+    if (shmem_my_pe() == 0) {
+        fprintf(stderr, "PEs: %d\n", shmem_n_pes());
+    }
 
-    test_reduce(int_sum_to_all_helper_linear, 1, 100);
+    for (count = 32; count <= 32 * 1024 * 1024; count *= 32) {
+        if (shmem_my_pe() == 0) {
+            fprintf(stderr, "Rec_dbl  [%lu]: %lf\n", count, test_reduce(int_sum_to_all_helper_rec_dbl, iterations, count));
+            fprintf(stderr, "OpenSHMEM[%lu]: %lf\n", count, test_reduce(shmem_int_sum_to_all, iterations, count));
+            fprintf(stderr, "Linear   [%lu]: %lf\n", count, test_reduce(int_sum_to_all_helper_linear, iterations, count));
+            fprintf(stderr, "\n");
+        } else {
+            test_reduce(shmem_int_sum_to_all, iterations, count);
+            test_reduce(int_sum_to_all_helper_linear, iterations, count);
+            test_reduce(int_sum_to_all_helper_rec_dbl, iterations, count);
+        }
+    }
 
     shmem_finalize();
     return 0;

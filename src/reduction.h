@@ -6,4 +6,8 @@
 void int_sum_to_all_helper_linear(int *dest, const int *source, int nreduce, int PE_start,
                                   int logPE_stride, int PE_size, int *pWrk, long *pSync);
 
+void int_sum_to_all_helper_rec_dbl(int *dest, const int *source, int nreduce, int PE_start,
+                                  int logPE_stride, int PE_size, int *pWrk, long *pSync);
+
+
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_REDUCTION_H
