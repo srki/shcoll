@@ -2,11 +2,7 @@
 #define OPENSHMEM_COLLECTIVE_ROUTINES_BROADCAST_H
 
 #include <stddef.h>
-
-#define SHCOLL_BCAST_SYNC_SIZE 1
-
-/* TODO: move */
-#define SHCOLL_SYNC_VALUE 0
+#include "global.h"
 
 void shcoll_set_broadcast_tree_degree(int tree_degree);
 

@@ -2,10 +2,7 @@
 #define OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
 
 #include <shmem.h>
-
-#define SHCOLL_BARRIER_SYNC_SIZE SHMEM_BARRIER_SYNC_SIZE
-
-#define SHCOLL_SYNC_VALUE SHMEM_SYNC_VALUE
+#include "global.h"
 
 
 void shcoll_set_tree_degree(int tree_degree);
