@@ -21,19 +21,19 @@ collect.o: src/collect.c
 	oshcc -c $< -o $@
 
 
-test: barrier broadcast reduction collect
+test: barrier.test broadcast.test reduction.test collect.test
 
-barrier: test/barrier_test.c shcoll.a
+barrier.test: test/barrier_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
-broadcast: test/broadcast_test.c shcoll.a
+broadcast.test: test/broadcast_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
-reduction: test/reduction_test.c shcoll.a
+reduction.test: test/reduction_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
-collect: test/collect_test.c shcoll.a
+collect.test: test/collect_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
 clean:
-	rm barrier broadcast reduction *.o *.a
+	rm -f *.o *.a *.test
