@@ -1,21 +1,38 @@
 all: build test
 
-build:
-	oshcc -c src/util/trees.c -o trees.o
-	oshcc -c src/barrier.c -o barrier.o
-	oshcc -c src/broadcast.c -o broadcast.o
-	oshcc -c src/reduction.c -o reduction.o
-	ar cr shcoll.a trees.o barrier.o broadcast.o reduction.o
+build: shcoll.a
 
-test: barrier broadcast reduction
+shcoll.a: trees.o barrier.o broadcast.o reduction.o collect.o
+	ar cr shcoll.a trees.o barrier.o broadcast.o reduction.o collect.o
 
-barrier: test/barrier_test.c build
+trees.o: src/util/trees.c
+	oshcc -c $< -o $@
+
+barrier.o: src/barrier.c
+	oshcc -c $< -o $@
+
+broadcast.o: src/broadcast.c
+	oshcc -c $< -o $@
+
+reduction.o: src/reduction.c
+	oshcc -c $< -o $@
+
+collect.o: src/collect.c
+	oshcc -c $< -o $@
+
+
+test: barrier broadcast reduction collect
+
+barrier: test/barrier_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
-broadcast: test/broadcast_test.c build
+broadcast: test/broadcast_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
-reduction: test/reduction_test.c build
+reduction: test/reduction_test.c shcoll.a
+	oshcc $< shcoll.a -Isrc -o $@
+
+collect: test/collect_test.c shcoll.a
 	oshcc $< shcoll.a -Isrc -o $@
 
 clean:
