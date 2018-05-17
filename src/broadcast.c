@@ -1,5 +1,5 @@
+#include <stdio.h>
 #include "broadcast.h"
-#include <shmem.h>
 #include "util/trees.h"
 
 static int tree_degree_broadcast = 2;
@@ -20,7 +20,6 @@ inline static void broadcast_helper_linear(void *target, const void *source, siz
         shmem_char_get(target, source, nbytes, root);
     }
     shmem_barrier(PE_start, logPE_stride, PE_size, pSync);
-    shmem_quiet();
 }
 
 inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
@@ -121,6 +120,7 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
         shmem_long_atomic_inc(pSync, PE_start + parent * stride);
     }
 
+    /* TODO: try inc-get-inc instead of put and inc */
     /* Send data to children */
     if (node.children_num != 0) {
         for (i = 0; i < node.children_num; i++) {
