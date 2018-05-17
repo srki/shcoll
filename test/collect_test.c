@@ -6,16 +6,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "util.h"
+#include "util/util.h"
+#include "util/debug.h"
 
 #define VERIFY
 #define PRINTx
 
-#define gprintf(...) fprintf(stderr, __VA_ARGS__)
 
 typedef void (*collect_impl)(void *, const void *, size_t, int, int, int, long *);
 
-double test_collect(collect_impl collect, int iterations, size_t count, size_t COLLECT_SYNC_SIZE, size_t SYNC_VALUE) {
+double test_collect(collect_impl collect, int iterations, size_t count, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
     #ifdef PRINT
     long *lock = shmem_malloc(sizeof(long));
     *lock = 0;
@@ -49,8 +49,7 @@ double test_collect(collect_impl collect, int iterations, size_t count, size_t C
         memcpy(dst, src, total_size * sizeof(uint32_t));
         #endif
 
-        //shmem_sync_all();
-        shmem_barrier_all();
+        shmem_barrier_all(); /* shmem_sync_all(); */
         collect(dst, src, nelems, 0, 0, npes, pSync);
 
         #ifdef PRINT
@@ -101,11 +100,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (shmem_my_pe() == 0) {
-        gprintf("shmem: %lf\n", test_collect(shmem_collect32, iterations, count, SHMEM_COLLECT_SYNC_SIZE, SHMEM_SYNC_VALUE));
-        gprintf("linear: %lf\n", test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_COLLECT_SYNC_SIZE, SHCOLL_SYNC_VALUE));
+        gprintf("shmem: %lf\n", test_collect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
+        gprintf("linear: %lf\n", test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
     } else {
-        test_collect(shmem_collect32, iterations, count, SHMEM_COLLECT_SYNC_SIZE, SHMEM_SYNC_VALUE);
-        test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_COLLECT_SYNC_SIZE, SHCOLL_SYNC_VALUE);
+        test_collect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+        test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
     }
 
     shmem_finalize();
