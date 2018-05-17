@@ -161,13 +161,13 @@ static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
 #define SHCOLL_BARRIER_DEFINITION(_name, _helper)                               \
     void shcoll_##_name##_barrier(int PE_start, int logPE_stride,               \
                                   int PE_size, long *pSync) {                   \
-        _helper(PE_start, logPE_stride, PE_size, pSync);                        \
         shmem_quiet();                                                          \
+        _helper(PE_start, logPE_stride, PE_size, pSync);                        \
     }                                                                           \
                                                                                 \
     void shcoll_##_name##_barrier_all() {                                       \
-        _helper(0, 0, shmem_n_pes(), barrier_all_pSync);                        \
         shmem_quiet();                                                          \
+        _helper(0, 0, shmem_n_pes(), barrier_all_pSync);                        \
     }
 
 SHCOLL_BARRIER_DEFINITION(linear, barrier_sync_helper_linear)
