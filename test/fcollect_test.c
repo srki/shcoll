@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <collect.h>
 #include "util/util.h"
 #include "util/debug.h"
 
@@ -62,7 +63,7 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
         #ifdef VERIFY
         for (int j = 0; j < total_nelem; j++) {
             if (total_nelem - j != dst[j]) {
-                gprintf("[%d] dst[%d] = %d; Expected %zu\n", shmem_my_pe(), j, dst[j], total_nelem - j);
+                gprintf("i:%d [%d] dst[%d] = %d; Expected %zu\n", i, shmem_my_pe(), j, dst[j], total_nelem - j);
                 abort();
             }
         }
@@ -84,8 +85,8 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
 }
 
 int main(int argc, char *argv[]) {
-    int iterations = 100;
-    size_t count = 100;
+    int iterations = 1000;
+    size_t count = 10000;
 
     shmem_init();
 
@@ -94,11 +95,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (shmem_my_pe() == 0) {
-        gprintf("shmem: %lf\n", test_fcollect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
-        //gprintf("linear: %lf\n", test_fcollect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
+        gprintf("shmem: %lf\n", test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
+        gprintf("linear: %lf\n", test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
     } else {
-        test_fcollect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-        //test_fcollect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+        test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
     }
 
     shmem_finalize();

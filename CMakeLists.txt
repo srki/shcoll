@@ -13,10 +13,16 @@ set(SOURCE_FILES
         src/broadcast.c
         src/reduction.c
         src/collect.c
+        src/fcollect.c
         test/barrier_test.c
         test/broadcast_test.c
         test/reduction_test.c
         test/collect_test.c
-        )
+        test/fcollect_test.c
+        test/util/debug.h
+        spec/broadcast.c
+        spec/broadcast-loop.c
+        spec/collect.c)
+
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})
