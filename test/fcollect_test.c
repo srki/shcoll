@@ -60,6 +60,10 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
         shmem_clear_lock(lock);
         #endif
 
+        if ((i + 1) % (iterations / 10) == 0 && shmem_my_pe() == 0) {
+            gprintf("%d\n", i + 1);
+        }
+
         #ifdef VERIFY
         for (int j = 0; j < total_nelem; j++) {
             if (total_nelem - j != dst[j]) {
@@ -96,9 +100,11 @@ int main(int argc, char *argv[]) {
 
     if (shmem_my_pe() == 0) {
         gprintf("shmem: %lf\n", test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
+        gprintf("rec_dbl: %lf\n", test_fcollect(shcoll_fcollect32_rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
         gprintf("linear: %lf\n", test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
     } else {
         test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+        test_fcollect(shcoll_fcollect32_rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
     }
 
