@@ -1,9 +1,7 @@
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_BARRIER_H
 
-#include <shmem.h>
 #include "global.h"
-
 
 void shcoll_set_tree_degree(int tree_degree);
 
