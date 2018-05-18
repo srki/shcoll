@@ -1,5 +1,4 @@
 #include "reduction.h"
-#include <shmem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "broadcast.h"

@@ -1,7 +1,7 @@
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_REDUCTION_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_REDUCTION_H
 
-/* TODO: add SCHOLL_REDUCE_MIN_WRKDATA_SIZE */
+#include "global.h"
 
 #define SHCOLL_REDUCE_DECLARE(_name, _type, _algorithm)                                                         \
     void shcoll_##_name##_to_all_##_algorithm (_type *dest, const _type *source, int nreduce, int PE_start,     \
