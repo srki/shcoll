@@ -18,7 +18,7 @@ int main(void) {
 
     for (int i = 0; i < 1000; i++) {
         memset(dest, 0, sizeof(long) * 4);
-        shmem_sync_all();
+        shmem_barrier_all(); //shmem_sync_all();
         shmem_broadcast64(dest, source, 4, 0, 0, 0, npes, pSync);
         for (int j = 0; j < 4; j++) {
             if (me != 0 && dest[j] != j) {
