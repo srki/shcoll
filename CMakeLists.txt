@@ -22,7 +22,7 @@ set(SOURCE_FILES
         test/util/debug.h
         spec/broadcast.c
         spec/broadcast-loop.c
-        spec/collect.c)
+        spec/collect.c src/util/rotate.c src/util/rotate.h)
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

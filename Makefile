@@ -5,10 +5,13 @@ all: build test
 
 build: shcoll.a
 
-shcoll.a: trees.o barrier.o broadcast.o reduction.o collect.o fcollect.o
+shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o
 	ar cr shcoll.a $^
 
 trees.o: src/util/trees.c
+	$(CC) -c $< -o $@
+
+rotate.o: src/util/rotate.c
 	$(CC) -c $< -o $@
 
 barrier.o: src/barrier.c
