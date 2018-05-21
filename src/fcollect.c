@@ -137,7 +137,6 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
                                          int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
-    const int npes = shmem_n_pes();
 
     /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
@@ -145,7 +144,7 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
     int round;
     int peer;
     size_t sent_bytes = nbytes;
-    size_t total_nbytes = npes * nbytes;
+    size_t total_nbytes = PE_size * nbytes;
     size_t to_send;
 
     const long SYNC_VALUE = SHCOLL_SYNC_VALUE;
