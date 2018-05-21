@@ -3,7 +3,6 @@
 //
 
 #include "alltoall.h"
-#include "global.h"
 #include "barrier.h"
 #include <string.h>
 #include <limits.h>
@@ -19,15 +18,19 @@ inline static void alltoall_helper_loop(void *dest, const void *source, size_t n
     void *const dest_ptr = ((uint8_t *) dest) + me * nelems;
     void const *source_ptr = ((uint8_t *) source) + me * nelems;
 
+    int i;
+    int peer_as;
+
     memcpy(dest_ptr, source_ptr, nelems);
 
-    for (int i = 1; i < PE_size; i++) {
-        int peer_as = (me_as + i) % PE_size;
+    for (i = 1; i < PE_size; i++) {
+        peer_as = (me_as + i) % PE_size;
         source_ptr = ((uint8_t *) source) + peer_as * nelems;
 
-        shmem_putmem(dest_ptr, source_ptr, nelems, peer_as);
+        shmem_putmem(dest_ptr, source_ptr, nelems, PE_start + peer_as * stride);
     }
 
+    /* TODO: change to auto shcoll barrier */
     shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);
 }
 
