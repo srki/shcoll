@@ -2,14 +2,14 @@
 // Created by Srdan Milakovic on 5/21/18.
 //
 
-#include <stddef.h>
+#include "alltoall.h"
 #include <stdlib.h>
 #include <string.h>
 #include "util/run.h"
 #include "util/util.h"
 
 #define VERIFY
-#define PRINT
+#define PRINTx
 
 typedef void (*alltoall_impl)(void *, const void *, size_t, int, int, int, long *);
 
@@ -114,6 +114,8 @@ int main(int argc, char *argv[]) {
     }
 
     RUN(alltoall32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_ALLTOALL_SYNC_SIZE);
+    RUN(alltoall32, loop, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+
 
     shmem_finalize();
 

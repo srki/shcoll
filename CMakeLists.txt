@@ -29,7 +29,7 @@ set(SOURCE_FILES
         spec/broadcast.c
         spec/broadcast-loop.c
         spec/collect.c
-        )
+        src/alltoall.c src/alltoall.h)
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

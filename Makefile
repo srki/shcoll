@@ -5,7 +5,7 @@ all: build test
 
 build: shcoll.a
 
-shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o
+shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o
 	ar cr shcoll.a $^
 
 trees.o: src/util/trees.c
@@ -27,6 +27,9 @@ collect.o: src/collect.c
 	$(CC) -c $< -o $@
 
 fcollect.o: src/fcollect.c
+	$(CC) -c $< -o $@
+
+alltoall.o: src/alltoall.c
 	$(CC) -c $< -o $@
 
 test: barrier.test broadcast.test reduction.test collect.test fcollect.test alltoall.test
