@@ -15,21 +15,23 @@ set(SOURCE_FILES
         src/reduction.c
         src/collect.c
         src/fcollect.c
+        src/alltoall.c
+        src/alltoalls.c
 
         test/barrier_test.c
         test/broadcast_test.c
         test/reduction_test.c
         test/collect_test.c
         test/fcollect_test.c
+        test/alltoall_test.c
+        test/alltoalls_test.c
         test/util/debug.h
         test/util/util.h
         test/util/run.h
-        test/alltoall_test.c
 
         spec/broadcast.c
         spec/broadcast-loop.c
-        spec/collect.c
-        src/alltoall.c src/alltoall.h)
+        spec/collect.c )
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

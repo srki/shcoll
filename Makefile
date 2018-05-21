@@ -3,9 +3,10 @@ CC=oshcc -g
 
 all: build test
 
+
 build: shcoll.a
 
-shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o
+shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
 	ar cr shcoll.a $^
 
 trees.o: src/util/trees.c
@@ -32,7 +33,11 @@ fcollect.o: src/fcollect.c
 alltoall.o: src/alltoall.c
 	$(CC) -c $< -o $@
 
-test: barrier.test broadcast.test reduction.test collect.test fcollect.test alltoall.test
+alltoalls.o: src/alltoalls.c
+	$(CC) -c $< -o $@
+
+
+test: barrier.test broadcast.test reduction.test collect.test fcollect.test alltoall.test alltoalls.test
 
 barrier.test: test/barrier_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
@@ -50,6 +55,9 @@ fcollect.test: test/fcollect_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
 
 alltoall.test: test/alltoall_test.c shcoll.a
+	$(CC) $< shcoll.a -Isrc -o $@
+
+alltoalls.test: test/alltoalls_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
 
 
