@@ -29,7 +29,7 @@ collect.o: src/collect.c
 fcollect.o: src/fcollect.c
 	$(CC) -c $< -o $@
 
-test: barrier.test broadcast.test reduction.test collect.test fcollect.test
+test: barrier.test broadcast.test reduction.test collect.test fcollect.test alltoall.test
 
 barrier.test: test/barrier_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
@@ -44,6 +44,9 @@ collect.test: test/collect_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
 
 fcollect.test: test/fcollect_test.c shcoll.a
+	$(CC) $< shcoll.a -Isrc -o $@
+
+alltoall.test: test/alltoall_test.c shcoll.a
 	$(CC) $< shcoll.a -Isrc -o $@
 
 

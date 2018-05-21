@@ -7,6 +7,8 @@
 
 #include <time.h>
 
+typedef unsigned long long time_ns_t;
+
 static unsigned long long current_time_ns() {
     struct timespec t = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &t);
