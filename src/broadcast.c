@@ -23,7 +23,7 @@ inline static void broadcast_helper_linear(void *target, const void *source, siz
 }
 
 inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
-                                                   int PE_start, int logPE_stride, int PE_size, long *pSync) {
+                                                  int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
@@ -84,7 +84,7 @@ inline static void broadcast_helper_complete_tree(void *target, const void *sour
 }
 
 inline static void broadcast_helper_binomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
-                                              int PE_start, int logPE_stride, int PE_size, long *pSync) {
+                                                  int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
