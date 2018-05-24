@@ -250,7 +250,6 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
 }
 
 
-/* TODO: remove _helper form the argument list */
 #define SHCOLL_BROADCAST_DEFINITION(_name, _size)                                           \
     void shcoll_broadcast##_size##_##_name(void *dest, const void *source,                  \
                                            size_t nelems, int PE_root, int PE_start,        \
