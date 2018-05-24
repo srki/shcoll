@@ -64,7 +64,7 @@ double test_alltoalls32(alltoalls_impl alltoalls, int iterations, size_t nelems,
         memset(dest, 0, total_nelem * dst * sizeof(uint32_t));
         #endif
 
-        shmem_barrier_all(); /* shmem_sync_all(); */
+        shmem_sync_all();
 
         alltoalls(dest, source, dst, sst, nelems, 0, 0, npes, pSync);
 

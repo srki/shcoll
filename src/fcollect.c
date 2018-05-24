@@ -40,7 +40,7 @@ inline static void fcollect_helper_linear(void *dest, const void *source, size_t
     }
     shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync + 1);
 
-    shcoll_linear_broadcast8(dest, dest, nbytes * shmem_n_pes(), 0, PE_start, logPE_stride, PE_size, pSync + 2);
+    shcoll_broadcast8_linear(dest, dest, nbytes * shmem_n_pes(), 0, PE_start, logPE_stride, PE_size, pSync + 2);
 }
 
 /**

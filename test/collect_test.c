@@ -49,7 +49,7 @@ double test_collect(collect_impl collect, int iterations, size_t count, long SYN
         memcpy(dst, src, total_size * sizeof(uint32_t));
         #endif
 
-        shmem_barrier_all(); /* shmem_sync_all(); */
+        shmem_sync_all();
         collect(dst, src, nelems, 0, 0, npes, pSync);
 
         #ifdef PRINT

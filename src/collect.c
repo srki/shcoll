@@ -58,7 +58,7 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
     //while (*offset != 1201);
     //fprintf(stderr, "%d %zu\n", shmem_my_pe(), *offset);
 
-    shcoll_linear_broadcast8(dest, dest, *offset - 1, PE_start, PE_start, logPE_stride, PE_size, pSync + 1);
+    shcoll_broadcast8_linear(dest, dest, *offset - 1, PE_start, PE_start, logPE_stride, PE_size, pSync + 1);
 }
 
 #define SHCOLL_COLLECT_DEFINITION(_name, _size)                                                         \

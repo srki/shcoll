@@ -1,8 +1,6 @@
 #include <stdio.h>
-#include <assert.h>
 #include "broadcast.h"
 #include "util/trees.h"
-#include "../test/util/run.h"
 
 static int tree_degree_broadcast = 2;
 
@@ -122,7 +120,7 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
         shmem_long_atomic_inc(pSync, PE_start + parent * stride);
     }
 
-    /* TODO: try inc-get-inc instead of put and inc */
+    /* TODO: try inc-get-inc instead of put and inc (probably not necessary because binomial is used for short msgs) */
     /* Send data to children */
     if (node.children_num != 0) {
         for (i = 0; i < node.children_num; i++) {
@@ -178,8 +176,6 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
     /* Used in the collect part to wait for new blocks */
     long ring_received = SHMEM_SYNC_VALUE;
 
-
-
     if (me_as != 0) {
         source = target;
     }
@@ -201,14 +197,12 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
                          data_end - data_start, target_pe);
             shmem_fence();
             shmem_long_atomic_inc(pSync, target_pe);
-            // gprintf("%d -> %d %zu\n", me, target_pe, data_end - data_start);
         }
 
         /* Send (right - mid) elements starting with mid from (me_as - dist) */
         if (me_as - dist == left) {
             shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
             total_received = right - mid;
-            // gprintf("%d recv\n", me);
         }
 
         if (next_as - dist == left) {
@@ -222,14 +216,11 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
         }
     }
 
-    // gprintf("[%d] ring start\n", me_as);
 
     /* Do collect using (modified) ring algorithm */
     while (next_pe_nblocks != PE_size) {
         data_start = (next_block * nbytes + PE_size - 1) / PE_size;
         data_end = ((next_block + 1) * nbytes + PE_size - 1) / PE_size;
-
-        //gprintf("%d -> %d (%d) %u %ld\n", me, next_pe, next_block, *(uint32_t *) (((char *) source) + data_start), ring_received);
 
         shmem_putmem(((char *) target) + data_start, ((char *) source) + data_start, data_end - data_start, next_pe);
         shmem_fence();
@@ -253,9 +244,6 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
         total_received++;
     }
 
-    //gprintf("[%d] ring end %ld %ld\n", me_as, ring_received, pSync[1]);
-
-
     // TODO: maybe only one pSync is enough
     pSync[0] = SHMEM_SYNC_VALUE;
     pSync[1] = SHMEM_SYNC_VALUE;
@@ -263,35 +251,34 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
 
 
 /* TODO: remove _helper form the argument list */
-#define SHCOLL_BROADCAST_DEFINITION(_name, _helper, _size)                      \
-    void shcoll_##_name##_broadcast##_size(void *dest, const void *source,      \
-                                    size_t nelems, int PE_root, int PE_start,   \
-                                    int logPE_stride, int PE_size,              \
-                                    long *pSync) {                              \
-        _helper(dest, source, (_size) / CHAR_BIT * nelems,                      \
-                PE_root, PE_start, logPE_stride, PE_size, pSync);               \
-    }                                                                           \
+#define SHCOLL_BROADCAST_DEFINITION(_name, _size)                                           \
+    void shcoll_broadcast##_size##_##_name(void *dest, const void *source,                  \
+                                           size_t nelems, int PE_root, int PE_start,        \
+                                           int logPE_stride, int PE_size, long *pSync) {    \
+        broadcast_helper_##_name(dest, source, (_size) / CHAR_BIT * nelems,                 \
+                PE_root, PE_start, logPE_stride, PE_size, pSync);                           \
+    }                                                                                       \
 
 /* @formatter:off */
 
-SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 8)
-SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 16)
-SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 32)
-SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 64)
+SHCOLL_BROADCAST_DEFINITION(linear, 8)
+SHCOLL_BROADCAST_DEFINITION(linear, 16)
+SHCOLL_BROADCAST_DEFINITION(linear, 32)
+SHCOLL_BROADCAST_DEFINITION(linear, 64)
 
-SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 8)
-SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 16)
-SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 32)
-SHCOLL_BROADCAST_DEFINITION(complete_tree, broadcast_helper_complete_tree, 64)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, 8)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, 16)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, 32)
+SHCOLL_BROADCAST_DEFINITION(complete_tree, 64)
 
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 8)
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 16)
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 32)
-SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 64)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, 8)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, 16)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, 32)
+SHCOLL_BROADCAST_DEFINITION(binomial_tree, 64)
 
-SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 8)
-SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 16)
-SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 32)
-SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 64)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, 8)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, 16)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, 32)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, 64)
 
 /* @formatter:on */

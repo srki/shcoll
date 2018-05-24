@@ -31,7 +31,7 @@ set(SOURCE_FILES
 
         spec/broadcast.c
         spec/broadcast-loop.c
-        spec/collect.c )
+        spec/collect.c src/util/wraper_1_3.h)
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

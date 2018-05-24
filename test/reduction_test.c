@@ -42,7 +42,7 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count, long SYNC_V
         memcpy(dst, src, count * sizeof(uint32_t));
         #endif
 
-        shmem_barrier_all(); /* shmem_barrier_sync(); */
+        shmem_barrier_all();
         reduce(dst, src, (int) count, 0, 0, shmem_n_pes(), pWrk, pSync);
 
 

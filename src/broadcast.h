@@ -6,11 +6,10 @@
 
 void shcoll_set_broadcast_tree_degree(int tree_degree);
 
-#define SHCOLL_BROADCAST_DECLARATION(_name, _size)                              \
-    void shcoll_##_name##_broadcast##_size(void *dest, const void *source,      \
-                                    size_t nelems, int PE_root, int PE_start,   \
-                                    int logPE_stride, int PE_size,              \
-                                    long *pSync);
+#define SHCOLL_BROADCAST_DECLARATION(_name, _size)                                          \
+    void shcoll_broadcast##_size##_##_name(void *dest, const void *source,                  \
+                                           size_t nelems, int PE_root, int PE_start,        \
+                                           int logPE_stride, int PE_size, long *pSync);     \
 
 SHCOLL_BROADCAST_DECLARATION(linear, 8)
 SHCOLL_BROADCAST_DECLARATION(linear, 16)

@@ -46,7 +46,7 @@ inline static void _name##_helper_linear(_type *dest, const _type *source, int n
 void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduce, int PE_start,            \
                                                int logPE_stride, int PE_size, _type *pWrk, long *pSync) {   \
     _name##_helper_linear(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);             \
-    shcoll_linear_broadcast8(dest, dest, nreduce * sizeof(_type),                                           \
+    shcoll_broadcast8_linear(dest, dest, nreduce * sizeof(_type),                                           \
                              PE_start, PE_start, logPE_stride, PE_size, pSync + 1);                         \
 }                                                                                                           \
 
@@ -122,7 +122,7 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
                                       int logPE_stride, int PE_size, _type *pWrk, long *pSync) {            \
     _name##_helper_binomial(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);           \
                                                                                                             \
-    shcoll_binomial_tree_broadcast8(dest, dest, nreduce * sizeof(_type)     ,                               \
+    shcoll_broadcast8_binomial_tree(dest, dest, nreduce * sizeof(_type)     ,                               \
                                     PE_start, PE_start, logPE_stride, PE_size, pSync + 2);                  \
 }                                                                                                           \
 

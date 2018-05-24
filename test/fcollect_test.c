@@ -48,7 +48,7 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
         memset(dst, 0, total_nelem * sizeof(uint32_t));
         #endif
 
-        shmem_barrier_all(); /* shmem_sync_all(); */
+        shmem_sync_all();
 
         fcollect(dst, src, nelem, 0, 0, npes, pSync);
 
