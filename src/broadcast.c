@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <assert.h>
 #include "broadcast.h"
 #include "util/trees.h"
+#include "../test/util/run.h"
 
 static int tree_degree_broadcast = 2;
 
@@ -10,7 +12,7 @@ void shcoll_set_broadcast_tree_degree(int tree_degree) {
 
 
 inline static void broadcast_helper_linear(void *target, const void *source, size_t nbytes, int PE_root,
-                                            int PE_start, int logPE_stride, int PE_size, long *pSync) {
+                                           int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
     const int root = (PE_root * stride) + PE_start;
     const int me = shmem_my_pe();
@@ -137,7 +139,130 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
 }
 
 
+inline static void broadcast_helper_scatter_collect(void *target, const void *source, size_t nbytes, int PE_root,
+                                                    int PE_start, int logPE_stride, int PE_size, long *pSync) {
+    /* TODO: Optimize cases where data_start == data_end (block has size 0) */
 
+    const int me = shmem_my_pe();
+    const int stride = 1 << logPE_stride;
+
+    int root_as = (PE_root - PE_start) / stride;
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+
+    /* Shift me_as so that me_as for PE_root is 0 */
+    me_as = (me_as - root_as + PE_size) % PE_size;
+
+    /* The number of received blocks (scatter + collect) */
+    int total_received = me_as == 0 ? PE_size : 0;
+
+    int target_pe;
+    int next_as = (me_as + 1) % PE_size;
+    int next_pe = PE_start + (root_as + next_as) % PE_size * stride;
+
+    /* The index of the block that should be send to next_pe */
+    int next_block = me_as;
+
+    /* The number of blocks that next received */
+    int next_pe_nblocks = next_as == 0 ? PE_size : 0;
+
+    int left = 0;
+    int right = PE_size;
+    int mid;
+    int dist;
+
+    size_t data_start;
+    size_t data_end;
+
+    /* Used in the collect part to wait for new blocks */
+    long ring_received = SHMEM_SYNC_VALUE;
+
+
+
+    if (me_as != 0) {
+        source = target;
+    }
+
+    /* Scatter data to other PEs using binomial tree */
+    while (right - left > 1) {
+        /* dist = ceil((right - let) / 2) */
+        dist = ((right - left) >> 1) + ((right - left) & 0x1);
+        mid = left + dist;
+
+
+        /* Send (right - mid) elements starting with mid to pe + dist */
+        if (me_as == left && me_as + dist < right) {
+            data_start = (mid * nbytes + PE_size - 1) / PE_size;
+            data_end = (right * nbytes + PE_size - 1) / PE_size;
+            target_pe = PE_start + (root_as + me_as + dist) % PE_size * stride;
+
+            shmem_putmem(((char *) target) + data_start, ((char *) source) + data_start,
+                         data_end - data_start, target_pe);
+            shmem_fence();
+            shmem_long_atomic_inc(pSync, target_pe);
+            // gprintf("%d -> %d %zu\n", me, target_pe, data_end - data_start);
+        }
+
+        /* Send (right - mid) elements starting with mid from (me_as - dist) */
+        if (me_as - dist == left) {
+            shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
+            total_received = right - mid;
+            // gprintf("%d recv\n", me);
+        }
+
+        if (next_as - dist == left) {
+            next_pe_nblocks = right - mid;
+        }
+
+        if (me_as < mid) {
+            right = mid;
+        } else {
+            left = mid;
+        }
+    }
+
+    // gprintf("[%d] ring start\n", me_as);
+
+    /* Do collect using (modified) ring algorithm */
+    while (next_pe_nblocks != PE_size) {
+        data_start = (next_block * nbytes + PE_size - 1) / PE_size;
+        data_end = ((next_block + 1) * nbytes + PE_size - 1) / PE_size;
+
+        //gprintf("%d -> %d (%d) %u %ld\n", me, next_pe, next_block, *(uint32_t *) (((char *) source) + data_start), ring_received);
+
+        shmem_putmem(((char *) target) + data_start, ((char *) source) + data_start, data_end - data_start, next_pe);
+        shmem_fence();
+        shmem_long_atomic_inc(pSync + 1, next_pe);
+
+
+        next_pe_nblocks++;
+        next_block = (next_block - 1 + PE_size) % PE_size;
+
+        /* If we did not received all blocks, we must wait for the next block we want to send*/
+        if (total_received != PE_size) {
+            shmem_long_wait_until(pSync + 1, SHMEM_CMP_GT, ring_received);
+            ring_received++;
+            total_received++;
+        }
+    }
+
+    while (total_received != PE_size) {
+        shmem_long_wait_until(pSync + 1, SHMEM_CMP_GT, ring_received);
+        ring_received++;
+        total_received++;
+    }
+
+    //gprintf("[%d] ring end %ld %ld\n", me_as, ring_received, pSync[1]);
+
+
+    // TODO: maybe only one pSync is enough
+    pSync[0] = SHMEM_SYNC_VALUE;
+    pSync[1] = SHMEM_SYNC_VALUE;
+}
+
+
+/* TODO: remove _helper form the argument list */
 #define SHCOLL_BROADCAST_DEFINITION(_name, _helper, _size)                      \
     void shcoll_##_name##_broadcast##_size(void *dest, const void *source,      \
                                     size_t nelems, int PE_root, int PE_start,   \
@@ -146,6 +271,8 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
         _helper(dest, source, (_size) / CHAR_BIT * nelems,                      \
                 PE_root, PE_start, logPE_stride, PE_size, pSync);               \
     }                                                                           \
+
+/* @formatter:off */
 
 SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 8)
 SHCOLL_BROADCAST_DEFINITION(linear, broadcast_helper_linear, 16)
@@ -161,3 +288,10 @@ SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 8)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 16)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 32)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, broadcast_helper_binomial_tree, 64)
+
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 8)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 16)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 32)
+SHCOLL_BROADCAST_DEFINITION(scatter_collect, broadcast_helper_scatter_collect, 64)
+
+/* @formatter:on */

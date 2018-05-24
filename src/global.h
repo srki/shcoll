@@ -7,7 +7,7 @@
 
 #include <shmem.h>
 
-#define SHCOLL_BCAST_SYNC_SIZE 1
+#define SHCOLL_BCAST_SYNC_SIZE 2
 
 #define SHCOLL_SYNC_VALUE 0
 
