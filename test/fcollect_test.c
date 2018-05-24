@@ -12,22 +12,18 @@
 #include "util/debug.h"
 #include "util/run.h"
 
-#define VERIFY
-#define PRINTx
+#define VERIFYx
+#define PRINT
 
 typedef void (*fcollect_impl)(void *, const void *, size_t, int, int, int, long *);
 
 static inline void shcoll_fcollect32_shmem(void *dest, const void *source, size_t nelems, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+                                           int logPE_stride, int PE_size, long *pSync) {
     shmem_fcollect32(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync);
 }
 
-double test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
-    #ifdef PRINT
-    long *lock = shmem_malloc(sizeof(long));
-    *lock = 0;
-    #endif
-
+double
+test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
     long *pSync = shmem_malloc(COLLECT_SYNC_SIZE * sizeof(long));
     for (int i = 0; i < COLLECT_SYNC_SIZE; i++) {
         pSync[i] = SYNC_VALUE;
@@ -59,11 +55,20 @@ double test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, lon
         fcollect(dst, src, nelem, 0, 0, npes, pSync);
 
         #ifdef PRINT
-        shmem_set_lock(lock);
-        printf("%d: %d", shmem_my_pe(), dst[0]);
-        for (int j = 1; j < total_nelem; j++) { printf(", %d", dst[j]); }
-        printf("\n");
-        shmem_clear_lock(lock);
+        for (int b = 0; b < npes; b++) {
+            shmem_barrier_all();
+            if (b != me) {
+                continue;
+            }
+
+            gprintf("%2d: %2d", shmem_my_pe(), dst[0]);
+            for (int j = 1; j < total_nelem; j++) { gprintf(", %2d", dst[j]); }
+            gprintf("\n");
+
+            if (me == npes - 1) {
+                gprintf("\n");
+            }
+        }
         #endif
 
 
@@ -79,10 +84,6 @@ double test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, lon
 
     shmem_barrier_all();
     unsigned long long end = current_time_ns();
-
-    #ifdef PRINT
-    shmem_free(lock);
-    #endif
 
     shmem_free(pSync);
     shmem_free(src);
@@ -105,8 +106,9 @@ int main(int argc, char *argv[]) {
     RUN(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
     RUN(fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
     RUN(fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUNC(npes % 2 == 0, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
     RUNC(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUN(fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
 
     shmem_finalize();
 }
