@@ -10,13 +10,19 @@
 #include <collect.h>
 #include "util/util.h"
 #include "util/debug.h"
+#include "util/run.h"
 
-#define PRINTx
 #define VERIFY
+#define PRINTx
 
 typedef void (*fcollect_impl)(void *, const void *, size_t, int, int, int, long *);
 
-double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
+static inline void shcoll_fcollect32_shmem(void *dest, const void *source, size_t nelems, int PE_start,
+                                         int logPE_stride, int PE_size, long *pSync) {
+    shmem_fcollect32(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync);
+}
+
+double test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
     #ifdef PRINT
     long *lock = shmem_malloc(sizeof(long));
     *lock = 0;
@@ -60,9 +66,6 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
         shmem_clear_lock(lock);
         #endif
 
-        /**/if ((i + 1) % (iterations / 10) == 0 && shmem_my_pe() == 0) {
-            gprintf("%d\n", i + 1);
-        }
 
         #ifdef VERIFY
         for (int j = 0; j < total_nelem; j++) {
@@ -89,28 +92,21 @@ double test_fcollect(fcollect_impl fcollect, int iterations, size_t nelem, long 
 }
 
 int main(int argc, char *argv[]) {
-    int iterations = 100;
-    size_t count = 100000;
+    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
+    size_t count = (size_t) (argc > 2 ? strtol(argv[2], NULL, 0) : 1);
 
     shmem_init();
+    int npes = shmem_n_pes();
 
     if (shmem_my_pe() == 0) {
         gprintf("[%s]PEs: %d\n", __FILE__, shmem_n_pes());
     }
 
-    if (shmem_my_pe() == 0) {
-        gprintf("shmem: %lf\n", test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
-        gprintf("ring: %lf\n", test_fcollect(shcoll_fcollect32_ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
-        gprintf("bruck: %lf\n", test_fcollect(shcoll_fcollect32_bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
-        gprintf("rec_dbl: %lf\n", test_fcollect(shcoll_fcollect32_rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
-        gprintf("linear: %lf\n", test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
-    } else {
-        test_fcollect(shmem_fcollect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-        test_fcollect(shcoll_fcollect32_ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        test_fcollect(shcoll_fcollect32_bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        test_fcollect(shcoll_fcollect32_rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        test_fcollect(shcoll_fcollect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    }
+    RUN(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUN(fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUN(fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUN(fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUNC(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
 
     shmem_finalize();
 }
