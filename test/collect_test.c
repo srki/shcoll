@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "util/util.h"
 #include "util/debug.h"
+#include "util/run.h"
 
 #define VERIFY
 #define PRINTx
@@ -15,12 +16,12 @@
 
 typedef void (*collect_impl)(void *, const void *, size_t, int, int, int, long *);
 
-double test_collect(collect_impl collect, int iterations, size_t count, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
-    #ifdef PRINT
-    long *lock = shmem_malloc(sizeof(long));
-    *lock = 0;
-    #endif
+static inline void shcoll_collect32_shmem(void *dest, const void *source, size_t nelems, int PE_start,
+                                          int logPE_stride, int PE_size, long *pSync) {
+    shmem_collect32(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync);
+}
 
+double test_collect32(collect_impl collect, int iterations, size_t count, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
     long *pSync = shmem_malloc(COLLECT_SYNC_SIZE * sizeof(long));
     for (int i = 0; i < COLLECT_SYNC_SIZE; i++) {
         pSync[i] = SYNC_VALUE;
@@ -53,11 +54,16 @@ double test_collect(collect_impl collect, int iterations, size_t count, long SYN
         collect(dst, src, nelems, 0, 0, npes, pSync);
 
         #ifdef PRINT
-        shmem_set_lock(lock);
-        printf("%d: %d", shmem_my_pe(), dst[0]);
-        for (int j = 1; j < total_size; j++) { printf(", %d", dst[j]); }
-        printf("\n");
-        shmem_clear_lock(lock);
+        for (int b = 0; b < npes; b++) {
+            shmem_barrier_all();
+            if (b != me) {
+                continue;
+            }
+
+            gprintf("%d: %2d", shmem_my_pe(), dst[0]);
+            for (int j = 1; j < total_size; j++) { gprintf(", %2d", dst[j]); }
+            gprintf("\n");
+        }
         #endif
 
         #ifdef VERIFY
@@ -76,10 +82,6 @@ double test_collect(collect_impl collect, int iterations, size_t count, long SYN
     shmem_barrier_all();
     unsigned long long end = current_time_ns();
 
-    #ifdef PRINT
-    shmem_free(lock);
-    #endif
-
     shmem_free(pSync);
     shmem_free(src);
     shmem_free(dst);
@@ -90,22 +92,19 @@ double test_collect(collect_impl collect, int iterations, size_t count, long SYN
 
 
 int main(int argc, char *argv[]) {
-    int iterations = 1000;
-    size_t count = 1;
+    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
+    size_t count = (size_t) (argc > 2 ? strtol(argv[2], NULL, 0) : 1);
 
     shmem_init();
+    int npes = shmem_n_pes();
 
     if (shmem_my_pe() == 0) {
         gprintf("[%s]PEs: %d\n", __FILE__, shmem_n_pes());
     }
 
-    if (shmem_my_pe() == 0) {
-        gprintf("shmem: %lf\n", test_collect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE));
-        gprintf("linear: %lf\n", test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE));
-    } else {
-        test_collect(shmem_collect32, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-        test_collect(shcoll_collect32_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    }
+    RUN(collect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+    RUN(collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
     shmem_finalize();
 }
