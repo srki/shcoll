@@ -26,8 +26,10 @@ void exclusive_prefix_sum(size_t *dest, size_t value, int PE_start, int logPE_st
     while (mask < PE_size) {
         if (me_as - dist >= 0) {
             shmem_size_wait_until(&scan_rounds[round], SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
-            partial_scan += scan_rounds[round] - 1;
-            scan_rounds[round] = SHMEM_SYNC_VALUE;
+            partial_scan += scan_rounds[round] - 1 - SHMEM_SYNC_VALUE;
+
+            shmem_size_p(scan_rounds + round, SHMEM_SYNC_VALUE, me);
+            shmem_size_wait_until(scan_rounds + round, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE);
         }
 
         dist <<= 1;
