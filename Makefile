@@ -6,13 +6,16 @@ all: build test
 
 build: shcoll.a
 
-shcoll.a: trees.o rotate.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
+shcoll.a: trees.o rotate.o scan.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
 	ar cr shcoll.a $^
 
 trees.o: src/util/trees.c
 	$(CC) -c $< -o $@
 
 rotate.o: src/util/rotate.c
+	$(CC) -c $< -o $@
+
+scan.o: src/util/scan.c
 	$(CC) -c $< -o $@
 
 barrier.o: src/barrier.c
