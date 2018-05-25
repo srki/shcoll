@@ -87,7 +87,7 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
 
     /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
-    int peer = (me_as + 1) % PE_size;
+    int peer = PE_start + ((me_as + 1) % PE_size) * stride;
     int data_block = me_as;
     int i;
 
@@ -96,7 +96,6 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
     memcpy(dest + data_block * nbytes, source, nbytes);
 
     for (i = 1; i < PE_size; i++) {
-        //gprintf("%d -> %d %d %ld\n", me, peer, data_block, *pSync);
         shmem_putmem(dest + data_block * nbytes, dest + data_block * nbytes, nbytes, peer);
         shmem_fence();
         /* TODO: try to use put */
@@ -106,7 +105,6 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
         shmem_long_wait_until(pSync, SHMEM_CMP_GE, SHCOLL_SYNC_VALUE + i);
     }
 
-    //gprintf("%d %ld\n", me, *pSync);
     shmem_long_put(pSync, &SYNC_VALUE, 1, me);
     shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SYNC_VALUE);
 }
