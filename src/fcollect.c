@@ -62,11 +62,9 @@ inline static void fcollect_helper_rec_dbl(void *dest, const void *source, size_
 
         shmem_putmem(dest + data_block * nbytes, dest + data_block * nbytes, nbytes * mask, peer);
         shmem_fence();
-        /* TODO: try to use put */
-        shmem_long_atomic_inc(pSync + i, peer);
+        shmem_long_atomic_inc(pSync + i, peer); /* TODO: try to use put */
 
         data_block &= ~mask;
-        //gprintf("%d -> %d [%d, %zu]\n", me, peer, data_block, nbytes * mask);
 
         shmem_long_wait_until(pSync + i, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         shmem_long_put(pSync + i, &SYNC_VALUE, 1, me);
@@ -98,8 +96,7 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
     for (i = 1; i < PE_size; i++) {
         shmem_putmem(dest + data_block * nbytes, dest + data_block * nbytes, nbytes, peer);
         shmem_fence();
-        /* TODO: try to use put */
-        shmem_long_atomic_inc(pSync, peer);
+        shmem_long_atomic_inc(pSync, peer); /* TODO: try to use put */
 
         data_block = (data_block - 1 + PE_size) % PE_size;
         shmem_long_wait_until(pSync, SHMEM_CMP_GE, SHCOLL_SYNC_VALUE + i);
@@ -136,13 +133,11 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
 
         shmem_putmem(dest + sent_bytes, dest, to_send, peer);
         shmem_fence();
-        /* TODO: try to use put */
-        shmem_long_atomic_inc(pSync + round, peer);
+        shmem_long_atomic_inc(pSync + round, peer); /* TODO: try to use put */
 
         sent_bytes += distance * nbytes;
         shmem_long_wait_until(pSync + round, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         shmem_long_put(pSync + round, &SYNC_VALUE, 1, me);
-        //gprintf("%d %d %d\n", shmem_my_pe(), distance, sent_bytes, nbytes);
     }
 
     rotate(dest, total_nbytes, me_as * nbytes);
