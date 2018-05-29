@@ -49,7 +49,7 @@ inline static void broadcast_helper_complete_tree(void *target, const void *sour
 
     /* Wait for the data form the parent */
     if (me_as != 0) {
-        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         source = target;
 
         /* Send ack */
@@ -78,10 +78,10 @@ inline static void broadcast_helper_complete_tree(void *target, const void *sour
         }
 
 
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
     }
 
-    *pSync = SHMEM_SYNC_VALUE;
+    *pSync = SHCOLL_SYNC_VALUE;
 }
 
 inline static void broadcast_helper_binomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
@@ -109,7 +109,7 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
 
     /* Wait for the data form the parent */
     if (me_as != 0) {
-        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         source = target;
         /* Send ack */
         parent = node.parent;
@@ -131,10 +131,10 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
             shmem_long_atomic_inc(pSync, dst);
         }
 
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHMEM_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
     }
 
-    *pSync = SHMEM_SYNC_VALUE;
+    *pSync = SHCOLL_SYNC_VALUE;
 }
 
 
@@ -175,7 +175,7 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
     size_t data_end;
 
     /* Used in the collect part to wait for new blocks */
-    long ring_received = SHMEM_SYNC_VALUE;
+    long ring_received = SHCOLL_SYNC_VALUE;
 
     if (me_as != 0) {
         source = target;
@@ -202,7 +202,7 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
 
         /* Send (right - mid) elements starting with mid from (me_as - dist) */
         if (me_as - dist == left) {
-            shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
+            shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
             total_received = right - mid;
         }
 
@@ -246,8 +246,8 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
     }
 
     // TODO: maybe only one pSync is enough
-    pSync[0] = SHMEM_SYNC_VALUE;
-    pSync[1] = SHMEM_SYNC_VALUE;
+    pSync[0] = SHCOLL_SYNC_VALUE;
+    pSync[1] = SHCOLL_SYNC_VALUE;
 }
 
 
