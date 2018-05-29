@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "broadcast.h"
 #include "util/trees.h"
+#include "barrier.h"
 
 static int tree_degree_broadcast = 2;
 
@@ -15,11 +16,11 @@ inline static void broadcast_helper_linear(void *target, const void *source, siz
     const int root = (PE_root * stride) + PE_start;
     const int me = shmem_my_pe();
 
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync); /* TODO: use shcoll barrier? */
+    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
     if (me != root) {
         shmem_char_get(target, source, nbytes, root);
     }
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
 }
 
 inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
