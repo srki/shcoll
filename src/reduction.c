@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "broadcast.h"
+#include "barrier.h"
+#include "../test/util/debug.h"
 
 
 /*
@@ -18,7 +20,7 @@ inline static void _name##_helper_linear(_type *dest, const _type *source, int n
     _type *tmp_dest;                                                                                        \
     int i, j;                                                                                               \
                                                                                                             \
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync); /* TODO: use shcoll barrier? */                  \
+    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
                                                                                                             \
     if (me_as == 0) {                                                                                       \
         tmp_dest = malloc(nbytes);                                                                          \
@@ -40,7 +42,7 @@ inline static void _name##_helper_linear(_type *dest, const _type *source, int n
         free(tmp_dest);                                                                                     \
     }                                                                                                       \
                                                                                                             \
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync); /* TODO: use shcoll barrier? */                  \
+    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
 }                                                                                                           \
                                                                                                             \
 void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduce, int PE_start,            \
@@ -66,7 +68,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
     _type *tmp_dest;                                                                                        \
     int i;                                                                                                  \
     unsigned mask = 0x1;                                                                                    \
-    long old_pSync = SHMEM_SYNC_VALUE;                                                                      \
+    long old_pSync = SHCOLL_SYNC_VALUE;                                                                     \
     long to_receive = 0;                                                                                    \
     long recv_mask;                                                                                         \
                                                                                                             \
@@ -85,7 +87,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         to_receive |= mask;                                                                                 \
     }                                                                                                       \
                                                                                                             \
-    /* TODO: fix if SHMEM_SYNC_VALUE not 0 */                                                               \
+    /* TODO: fix if SHCOLL_SYNC_VALUE not 0 */                                                              \
     /* Wait until all messages are received */                                                              \
     while (to_receive != 0) {                                                                               \
         memcpy(tmp_dest, dest, nbytes);                                                                     \
@@ -100,6 +102,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         shmem_getmem(dest, dest, nbytes, PE_start + target_as * stride);                                    \
                                                                                                             \
         for (i = 0; i < nreduce; i++) {                                                                     \
+            /* TODO: use _op */                                                                             \
             dest[i] += tmp_dest[i];                                                                         \
         }                                                                                                   \
                                                                                                             \
@@ -114,8 +117,8 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         shmem_long_atomic_add(pSync, me_as ^ target_as, PE_start + target_as * stride);                     \
     }                                                                                                       \
                                                                                                             \
-    *pSync = SHMEM_SYNC_VALUE;                                                                              \
-    shmem_barrier(PE_start, logPE_stride, PE_size, pSync + 1); /* TODO: use shcoll barrier? */              \
+    *pSync = SHCOLL_SYNC_VALUE;                                                                             \
+   shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync + 1);                                       \
 }                                                                                                           \
                                                                                                             \
 void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nreduce, int PE_start,          \
@@ -124,8 +127,7 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
                                                                                                             \
     shcoll_broadcast8_binomial_tree(dest, dest, nreduce * sizeof(_type)     ,                               \
                                     PE_start, PE_start, logPE_stride, PE_size, pSync + 2);                  \
-}                                                                                                           \
-
+}
 
 /*
  * Supported reduction operations
@@ -205,4 +207,3 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
 
 SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LINEAR)
 SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_BINOMIAL)
-
