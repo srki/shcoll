@@ -6,6 +6,7 @@
 #define OPENSHMEM_COLLECTIVE_ROUTINES_DEBUG_H
 
 #include "stdio.h"
+#include <assert.h>
 
 #define gprintf(...) fprintf(stderr, __VA_ARGS__)
 #define PL gprintf("[%d]:%d\n", shmem_my_pe(), __LINE__);

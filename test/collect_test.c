@@ -103,8 +103,9 @@ int main(int argc, char *argv[]) {
     }
 
     RUN(collect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
     RUN(collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+    RUN(collect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+    RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
     shmem_finalize();
 }
