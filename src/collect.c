@@ -94,19 +94,19 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
         shmem_fence();
 
         /* Wait until it's safe to use block_size buffer */
-        shmem_long_wait_until(receiver_progress, SHMEM_CMP_GT, round - RING_DIFF + SHMEM_SYNC_VALUE);
+        shmem_long_wait_until(receiver_progress, SHMEM_CMP_GT, round - RING_DIFF + SHCOLL_SYNC_VALUE);
         block_size_round = block_sizes + (round % RING_DIFF);
 
-        // TODO: fix -> shmem_size_p(block_size_round, nbytes_round + 1 + SHMEM_SYNC_VALUE, send_to_pe);
-        // shmem_size_atomic_add(block_size_round, nbytes_round + 1 + SHMEM_SYNC_VALUE, send_to_pe);
-        shmem_size_atomic_set(block_size_round, nbytes_round + 1 + SHMEM_SYNC_VALUE, send_to_pe);
+        // TODO: fix -> shmem_size_p(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
+        // shmem_size_atomic_add(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
+        shmem_size_atomic_set(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
 
         /* If writing block 0, reset offset to 0 */
         block_offset = (me_as + round + 1 == PE_size) ? 0 : block_offset + nbytes_round;
 
         /* Wait to receive the data in this round */
-        shmem_size_wait_until(block_size_round, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
-        nbytes_round = *block_size_round - 1 - SHMEM_SYNC_VALUE;
+        shmem_size_wait_until(block_size_round, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        nbytes_round = *block_size_round - 1 - SHCOLL_SYNC_VALUE;
 
         /* Reset the block size from the current round */
         shmem_size_p(block_size_round, SHCOLL_SYNC_VALUE, me);
@@ -160,11 +160,11 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
         recv_from = (int) (PE_start + ((me_as + distance) % PE_size) * stride);
 
         /* Notify partner that the data is ready */
-        shmem_size_atomic_set(block_sizes + round, recv_nbytes + 1 + SHMEM_SYNC_VALUE, send_to);
+        shmem_size_atomic_set(block_sizes + round, recv_nbytes + 1 + SHCOLL_SYNC_VALUE, send_to);
 
         /* Wait until the data is ready to be read */
-        shmem_size_wait_until(block_sizes + round, SHMEM_CMP_NE, SHMEM_SYNC_VALUE);
-        round_nbytes = *(block_sizes + round) - 1 - SHMEM_SYNC_VALUE;
+        shmem_size_wait_until(block_sizes + round, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        round_nbytes = *(block_sizes + round) - 1 - SHCOLL_SYNC_VALUE;
 
         round_nbytes = recv_nbytes + round_nbytes < total_nbytes ? round_nbytes : total_nbytes - recv_nbytes;
         shmem_getmem(dest + recv_nbytes, dest, round_nbytes, recv_from);
@@ -177,7 +177,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
 
     shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);
 
-    *(pSync + 1) = SHMEM_SYNC_VALUE;
+    *(pSync + 1) = SHCOLL_SYNC_VALUE;
 
     rotate(dest, total_nbytes, block_offset);
 }
