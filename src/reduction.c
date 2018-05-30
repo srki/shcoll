@@ -130,6 +130,128 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
 }
 
 /*
+ * Recursive doubling implementation
+ */
+
+#define REDUCE_HELPER_REC_DBL(_name, _type, _op)                                                            \
+inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int nreduce, int PE_start,      \
+                                          int logPE_stride, int PE_size, _type *pWrk, long *pSync) {        \
+    const int stride = 1 << logPE_stride;                                                                   \
+    const int me = shmem_my_pe();                                                                           \
+    int peer;                                                                                               \
+                                                                                                            \
+    size_t nbytes = nreduce * sizeof(_type);                                                                \
+                                                                                                            \
+    /* Get my index in the active set */                                                                    \
+    int me_as = (me - PE_start) / stride;                                                                   \
+    int mask;                                                                                               \
+    int i, j;                                                                                               \
+                                                                                                            \
+    int xchg_peer_p2s;                                                                                      \
+    int xchg_peer_as;                                                                                       \
+    int xchg_peer_pe;                                                                                       \
+                                                                                                            \
+    /* Power 2 set */                                                                                       \
+    int me_p2s;                                                                                             \
+    int p2s_size;                                                                                           \
+                                                                                                            \
+    _type *tmp_array = NULL;                                                                                \
+                                                                                                            \
+    /* Find the greatest power of 2 lower than PE_size */                                                   \
+    for (p2s_size = 1; p2s_size * 2 <= PE_size; p2s_size *= 2);                                             \
+                                                                                                            \
+    /* Check if the current PE belongs to the power 2 set */                                                \
+    me_p2s = me_as * p2s_size / PE_size;                                                                    \
+    if ((me_p2s * PE_size + p2s_size - 1) / p2s_size != me_as) {                                            \
+        me_p2s = -1;                                                                                        \
+    }                                                                                                       \
+                                                                                                            \
+    /* Check if the current PE should wait/send data to the peer */                                         \
+    if (me_p2s == -1) {                                                                                     \
+                                                                                                            \
+        /* Notify peer that the data is ready */                                                            \
+        peer = PE_start + (me_as - 1) * stride;                                                             \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                   \
+    } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                \
+        /* We should wait for the data to be ready */                                                       \
+        peer = PE_start + (me_as + 1) * stride;                                                             \
+        tmp_array = malloc(nbytes);                                                                         \
+        if (tmp_array == NULL) {                                                                            \
+            /* TODO: raise error */                                                                         \
+            exit(0);                                                                                        \
+        }                                                                                                   \
+                                                                                                            \
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                      \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                         \
+                                                                                                            \
+        /* Get the array and reduce */                                                                      \
+        shmem_getmem(dest, source, nbytes, peer);                                                           \
+        for (i = 0; i < nreduce; i++) {                                                                     \
+            tmp_array[i] = _op(dest[i], source[i]);                                                         \
+        }                                                                                                   \
+    } else {                                                                                                \
+        /* Init the temporary array */                                                                      \
+        tmp_array = malloc(nbytes);                                                                         \
+        if (tmp_array == NULL) {                                                                            \
+            /* TODO: raiser error */                                                                        \
+            exit(0);                                                                                        \
+        }                                                                                                   \
+        memcpy(tmp_array, source, nbytes);                                                                  \
+    }                                                                                                       \
+                                                                                                            \
+    /* If the current PE belongs to the power 2 set, do recursive doubling */                               \
+    if (me_p2s != -1) {                                                                                     \
+        for (mask = 0x1, i = 1; mask < p2s_size; mask <<= 1, i++) {                                         \
+            xchg_peer_p2s = me_p2s ^ mask;                                                                  \
+            xchg_peer_as = (xchg_peer_p2s * PE_size + p2s_size - 1) / p2s_size;                             \
+            xchg_peer_pe = PE_start + xchg_peer_as * stride;                                                \
+                                                                                                            \
+            /* Notify the peer PE that current PE is ready to accept the data */                            \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 1, xchg_peer_pe);                                   \
+                                                                                                            \
+            /* Wait until the peer PE is ready to accept the data */                                        \
+            shmem_long_wait_until(pSync + i, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE);                              \
+                                                                                                            \
+            /* Send the data to the peer */                                                                 \
+            shmem_putmem(dest, tmp_array, nbytes, xchg_peer_pe);                                            \
+            shmem_fence();                                                                                  \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 2, xchg_peer_pe);                                   \
+                                                                                                            \
+            /* Wait until the data is received and do local reduce */                                       \
+            shmem_long_wait_until(pSync + i, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE + 1);                          \
+            for (j = 0; j < nreduce; j++) {                                                                 \
+                tmp_array[j] = _op(dest[j], tmp_array[j]);                                                  \
+            }                                                                                               \
+                                                                                                            \
+            /* Reset the pSync for the current round */                                                     \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE, me);                                                 \
+        }                                                                                                   \
+                                                                                                            \
+        memcpy(dest, tmp_array, nbytes);                                                                    \
+    }                                                                                                       \
+                                                                                                            \
+    if (me_p2s == -1) {                                                                                     \
+        /* Wait to get the data from a PE that is in the power 2 set */                                     \
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                      \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                         \
+    } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                \
+        /* Send data to peer PE that is outside the power 2 set */                                          \
+        peer = PE_start + (me_as + 1) * stride;                                                             \
+                                                                                                            \
+        shmem_putmem(dest, dest, nbytes, peer);                                                             \
+        shmem_fence();                                                                                      \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                   \
+    }                                                                                                       \
+                                                                                                            \
+    free(tmp_array);                                                                                        \
+}                                                                                                           \
+                                                                                                            \
+void shcoll_##_name##_to_all_rec_dbl(_type *dest, const _type *source, int nreduce, int PE_start,           \
+                                     int logPE_stride, int PE_size, _type *pWrk, long *pSync) {             \
+    _name##_helper_rec_dbl(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);            \
+}                                                                                                           \
+
+/*
  * Supported reduction operations
  */
 
@@ -207,3 +329,4 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
 
 SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LINEAR)
 SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_BINOMIAL)
+SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_REC_DBL)

@@ -1,13 +1,9 @@
 #include "reduction.h"
-
-#include <time.h>
-#include <shmem.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
-#include <string.h>
 #include "util/util.h"
 #include "util/debug.h"
+#include "util/run.h"
 
 #define VERIFY
 #define PRINTx
@@ -16,8 +12,13 @@
 
 typedef void (*reduce_impl)(int *, const int *, int, int, int, int, int *, long *);
 
+static inline void shcoll_int_sum_to_all_shmem(int *dest, const int *source, int nreduce, int PE_start,
+                                               int logPE_stride, int PE_size, int *pWrk, long *pSync) {
+    shmem_int_sum_to_all(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);
+}
 
-double test_reduce(reduce_impl reduce, int iterations, size_t count, long SYNC_VALUE, size_t REDUCE_SYNC_SIZE, size_t REDUCE_MIN_WRKDATA_SIZE) {
+double test_int_sum_to_all(reduce_impl reduce, int iterations, size_t count,
+                           long SYNC_VALUE, size_t REDUCE_SYNC_SIZE, size_t REDUCE_MIN_WRKDATA_SIZE) {
     long *pSync = shmem_malloc(REDUCE_SYNC_SIZE * sizeof(long));
     int *pWrk = shmem_malloc(MAX(REDUCE_MIN_WRKDATA_SIZE, count) * sizeof(int));
 
@@ -27,11 +28,14 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count, long SYNC_V
 
     shmem_barrier_all();
 
+    int npes = shmem_n_pes();
+    int me = shmem_my_pe();
+
     int *dst = shmem_calloc(count, sizeof(int));
     int *src = shmem_calloc(count, sizeof(int));
 
     for (int i = 0; i < count; i++) {
-        src[i] = (i % 10007) * shmem_my_pe();
+        src[i] = ((i + 1) % 10007) * (me + 1);
     }
 
     shmem_barrier_all();
@@ -39,34 +43,40 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count, long SYNC_V
 
     for (int i = 0; i < iterations; i++) {
         #ifdef VERIFY
-        memcpy(dst, src, count * sizeof(uint32_t));
+        memset(dst, 0, count * sizeof(uint32_t));
         #endif
 
         shmem_barrier_all();
-        reduce(dst, src, (int) count, 0, 0, shmem_n_pes(), pWrk, pSync);
-
+        reduce(dst, src, (int) count, 0, 0, npes, pWrk, pSync);
 
         #ifdef PRINT
-        if (count > 100) {
-            continue;
+        for (int b = 0; b < npes; b++) {
+            shmem_barrier_all();
+            if (b != me) {
+                continue;
+            }
+
+            gprintf("%2d: %3d", me, dst[0]);
+            for (int j = 1; j < count; j++) { gprintf(", %3d", dst[j]); }
+            gprintf("\n");
+
+            if (me == npes - 1) {
+                gprintf("\n");
+            }
         }
-
-        char *print = malloc(1000000);
-        char *str = print;
-
-        for (int j = 0; j < count; j++) {
-            str += sprintf(str, "%d ", dst[j]);
-        }
-
-        fprintf(stderr, "%s\n", print);
-
-        free(print);
+        shmem_barrier_all();
         #endif
 
         #ifdef VERIFY
-        int sum = (shmem_n_pes() - 1) * shmem_n_pes() / 2;
+        int sum = (npes + 1) * npes / 2;
         for (int j = 0; j < count; j++) {
-            assert(dst[j] == sum * (j % 10007));
+            if (dst[j] != sum * ((j + 1) % 10007)) {
+                gprintf("[%d] i:%d dst[%d] = %d; Expected %d\n", me, i, j, dst[j], sum * ((j + 1) % 10007));
+                gprintf("%2d: %3d", me, dst[0]);
+                for (int k = 1; k < count; k++) { gprintf(", %3d", dst[k]); }
+                gprintf("\n");
+                abort();
+            }
         }
 
         #endif
@@ -87,28 +97,23 @@ double test_reduce(reduce_impl reduce, int iterations, size_t count, long SYNC_V
 
 
 int main(int argc, char *argv[]) {
-    int iterations = 10;
-    size_t count;
+    int iterations = argc > 1 ? (int) strtol(argv[1], NULL, 0) : 1;
+    size_t count = argc > 2 ? (size_t) strtol(argv[2], NULL, 0) : 1;
 
     shmem_init();
 
     if (shmem_my_pe() == 0) {
-        fprintf(stderr, "PEs: %d\n", shmem_n_pes());
+        gprintf("[%s]PEs: %d; size: %zu\n", __FILE__, shmem_n_pes(), count * sizeof(int));
     }
 
-    for (count = 32; count <= 32 * 1024 * 1024; count *= 32) {
-        if (shmem_my_pe() == 0) {
-            gprintf("OpenSHMEM[%lu]: %lf\n", count, test_reduce(shmem_int_sum_to_all, iterations, count, SHMEM_SYNC_VALUE, SHMEM_REDUCE_SYNC_SIZE, SHMEM_REDUCE_MIN_WRKDATA_SIZE));
-            gprintf("Linear[%lu]: %lf\n", count, test_reduce(shcoll_int_sum_to_all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE));
-            gprintf("Binomial[%lu]: %lf\n", count, test_reduce(shcoll_int_sum_to_all_binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE));
-            gprintf("\n");
-        } else {
-            test_reduce(shmem_int_sum_to_all, iterations, count, SHMEM_SYNC_VALUE, SHMEM_REDUCE_SYNC_SIZE, SHMEM_REDUCE_MIN_WRKDATA_SIZE);
-            test_reduce(shcoll_int_sum_to_all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
-            test_reduce(shcoll_int_sum_to_all_binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
-        }
-    }
+    // @formatter:off
+
+    RUN(int_sum_to_all, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_REDUCE_SYNC_SIZE, SHMEM_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+
+    // @formatter:on
 
     shmem_finalize();
-    return 0;
 }
