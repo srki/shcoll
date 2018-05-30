@@ -102,8 +102,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         shmem_getmem(dest, dest, nbytes, PE_start + target_as * stride);                                    \
                                                                                                             \
         for (i = 0; i < nreduce; i++) {                                                                     \
-            /* TODO: use _op */                                                                             \
-            dest[i] += tmp_dest[i];                                                                         \
+            dest[i] = _op(dest[i], tmp_dest[i]);                                                            \
         }                                                                                                   \
                                                                                                             \
         /* Mark as received */                                                                              \
