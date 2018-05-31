@@ -190,6 +190,7 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
 
         /* Send (right - mid) elements starting with mid to pe + dist */
         if (me_as == left && me_as + dist < right) {
+            /* TODO: possible overflow */
             data_start = (mid * nbytes + PE_size - 1) / PE_size;
             data_end = (right * nbytes + PE_size - 1) / PE_size;
             target_pe = PE_start + (root_as + me_as + dist) % PE_size * stride;
