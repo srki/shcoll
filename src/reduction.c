@@ -26,7 +26,7 @@ inline static void _name##_helper_linear(_type *dest, const _type *source, int n
         tmp_dest = malloc(nbytes);                                                                          \
         if (!tmp_dest) {                                                                                    \
             /* TODO: raise error */                                                                         \
-            exit(0);                                                                                        \
+            exit(-1);                                                                                       \
         }                                                                                                   \
                                                                                                             \
         memcpy(tmp_dest, source, nbytes);                                                                   \
@@ -75,7 +75,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
     tmp_dest = malloc(nbytes);                                                                              \
     if (!tmp_dest) {                                                                                        \
         /* TODO: raise error */                                                                             \
-        exit(0);                                                                                            \
+        exit(-1);                                                                                           \
     }                                                                                                       \
                                                                                                             \
     if (source != dest) {                                                                                   \
@@ -177,7 +177,7 @@ inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int 
         tmp_array = malloc(nbytes);                                                                         \
         if (tmp_array == NULL) {                                                                            \
             /* TODO: raise error */                                                                         \
-            exit(0);                                                                                        \
+            exit(-1);                                                                                       \
         }                                                                                                   \
                                                                                                             \
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                      \
@@ -193,7 +193,7 @@ inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int 
         tmp_array = malloc(nbytes);                                                                         \
         if (tmp_array == NULL) {                                                                            \
             /* TODO: raiser error */                                                                        \
-            exit(0);                                                                                        \
+            exit(-1);                                                                                       \
         }                                                                                                   \
         memcpy(tmp_array, source, nbytes);                                                                  \
     }                                                                                                       \
