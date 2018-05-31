@@ -214,8 +214,8 @@ inline static void fcollect_helper_neighbour_exchange(void *dest, const void *so
         shmem_long_wait_until(pSync + parity, SHMEM_CMP_GT, i / 2);
     }
 
-    pSync[0] = SHMEM_SYNC_VALUE;
-    pSync[1] = SHMEM_SYNC_VALUE;
+    pSync[0] = SHCOLL_SYNC_VALUE;
+    pSync[1] = SHCOLL_SYNC_VALUE;
 }
 
 #define SHCOLL_FCOLLECT_DEFINITION(_name, _size)                                                        \
