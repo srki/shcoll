@@ -30,7 +30,7 @@ set(SOURCE_FILES
         test/util/debug.h
         test/util/util.h
         test/util/run.h
-        )
+        src/util/bithacks.c src/util/bithacks.h src/reduction_template.h.hpp)
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

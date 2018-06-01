@@ -68,10 +68,13 @@
     SHCOLL_REDUCE_DECLARE(longlong_xor,     long long,  _algorithm)             \
 
 
+/* formatter:off */
 
 SHCOLL_REDUCE_DECLARE_ALL(linear)
 SHCOLL_REDUCE_DECLARE_ALL(binomial)
 SHCOLL_REDUCE_DECLARE_ALL(rec_dbl)
+SHCOLL_REDUCE_DECLARE_ALL(rabenseifner)
 
+/* formatter:on */
 
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_REDUCTION_H

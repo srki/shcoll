@@ -11,6 +11,7 @@
 #define gprintf(...) fprintf(stderr, __VA_ARGS__)
 #define PL gprintf("[%d]:%d\n", shmem_my_pe(), __LINE__);
 #define PLI(A) gprintf("[%d]:%d %d\n", shmem_my_pe(), __LINE__, (A));
+#define PLP(P) gprintf("[%d]:%d %p\n", shmem_my_pe(), __LINE__, (P));
 #define PLII(A, B) gprintf("[%d]:%d %d %d\n", shmem_my_pe(), __LINE__, (A), (B));
 
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_DEBUG_H

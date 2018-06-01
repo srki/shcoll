@@ -109,9 +109,10 @@ int main(int argc, char *argv[]) {
     // @formatter:off
 
     RUN(int_sum_to_all, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_REDUCE_SYNC_SIZE, SHMEM_REDUCE_MIN_WRKDATA_SIZE);
-    RUN(int_sum_to_all, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
-    RUN(int_sum_to_all, binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
     RUN(int_sum_to_all, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, rabenseifner, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
 
     // @formatter:on
 
