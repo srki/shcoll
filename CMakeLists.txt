@@ -12,6 +12,7 @@ set(SOURCE_FILES
         src/util/rotate.c
         src/util/scan.c
         src/util/wraper_1_3.h
+        src/util/bithacks.c
         src/barrier.c
         src/broadcast.c
         src/reduction.c
@@ -19,6 +20,8 @@ set(SOURCE_FILES
         src/fcollect.c
         src/alltoall.c
         src/alltoalls.c
+        src/reduction-inline.c
+        src/reduction-inline.h
 
         test/barrier_test.c
         test/broadcast_test.c
@@ -30,7 +33,8 @@ set(SOURCE_FILES
         test/util/debug.h
         test/util/util.h
         test/util/run.h
-        src/util/bithacks.c src/util/bithacks.h src/reduction_template.h.hpp)
+
+        )
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

@@ -1,4 +1,5 @@
 #include "reduction.h"
+#include "reduction-inline.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "util/util.h"
@@ -113,6 +114,7 @@ int main(int argc, char *argv[]) {
     RUN(int_sum_to_all, binomial, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
     RUN(int_sum_to_all, rabenseifner, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
     RUN(int_sum_to_all, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
+    RUN(int_sum_to_all, linear_i, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_REDUCE_SYNC_SIZE, SHCOLL_REDUCE_MIN_WRKDATA_SIZE);
 
     // @formatter:on
 
