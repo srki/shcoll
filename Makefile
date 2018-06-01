@@ -1,4 +1,4 @@
-CC=oshcc -g
+CC=cc -g
 
 
 all: build test
@@ -6,8 +6,11 @@ all: build test
 
 build: shcoll.a
 
-shcoll.a: trees.o rotate.o scan.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
+shcoll.a: bithacks.o trees.o rotate.o scan.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
 	ar cr shcoll.a $^
+
+bithacks.o: src/util/bithacks.c
+	$(CC) -c $< -o $@
 
 trees.o: src/util/trees.c
 	$(CC) -c $< -o $@
