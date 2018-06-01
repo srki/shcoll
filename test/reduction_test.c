@@ -72,8 +72,8 @@ double test_int_sum_to_all(reduce_impl reduce, int iterations, size_t count,
         for (int j = 0; j < count; j++) {
             if (dst[j] != sum * ((j + 1) % 10007)) {
                 gprintf("[%d] i:%d dst[%d] = %d; Expected %d\n", me, i, j, dst[j], sum * ((j + 1) % 10007));
-                gprintf("%2d: %3d", me, dst[0]);
-                for (int k = 1; k < count; k++) { gprintf(", %3d", dst[k]); }
+//                gprintf("%2d: %3d", me, dst[0]);
+//                for (int k = 1; k < count; k++) { gprintf(", %3d", dst[k]); }
                 gprintf("\n");
                 abort();
             }
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     shmem_init();
 
     if (shmem_my_pe() == 0) {
-        gprintf("[%s]PEs: %d; size: %zu\n", __FILE__, shmem_n_pes(), count * sizeof(int));
+        gprintf("[%s]PEs: %d; size: %zu bytes\n", __FILE__, shmem_n_pes(), count * sizeof(int));
     }
 
     // @formatter:off

@@ -3,6 +3,7 @@ project(OpenSHMEM-Collective-Routines)
 
 #set(CMAKE_C_STANDARD 99)
 
+add_definitions(-DCMAKE)
 set(CMAKE_C_COMPILER /Users/sm108/libs/SOS/_install/bin/oshcc)
 
 include_directories(src/)
@@ -12,6 +13,8 @@ set(SOURCE_FILES
         src/util/rotate.c
         src/util/scan.c
         src/util/wraper_1_3.h
+        src/util/bithacks.c
+        src/util/bithacks.h
         src/barrier.c
         src/broadcast.c
         src/reduction.c
@@ -29,8 +32,7 @@ set(SOURCE_FILES
         test/alltoalls_test.c
         test/util/debug.h
         test/util/util.h
-        test/util/run.h
-        src/util/bithacks.c src/util/bithacks.h src/reduction_template.h.hpp)
+        test/util/run.h)
 
 
 add_executable(OpenSHMEM-Collective-Routines ${SOURCE_FILES})

@@ -7,6 +7,10 @@
 #include "barrier.h"
 #include "../test/util/debug.h"
 
+/*
+ * Local reduce helper
+ */
+
 #define REDUCE_HELPER_LOCAL(_name, _type, _op)                                                                  \
 inline static void local_##_name##_reduce(_type *dest, const _type *src1, const _type *src2, size_t nreduce) {  \
     size_t i;                                                                                                   \
@@ -20,43 +24,38 @@ inline static void local_##_name##_reduce(_type *dest, const _type *src1, const 
  */
 
 #define REDUCE_HELPER_LINEAR(_name, _type, _op)                                                             \
-inline static void _name##_helper_linear(_type *dest, const _type *source, int nreduce, int PE_start,       \
-                                         int logPE_stride, int PE_size, _type *pWrk, long *pSync) {         \
+void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduce, int PE_start,            \
+                                    int logPE_stride, int PE_size, _type *pWrk, long *pSync) {              \
     const int stride = 1 << logPE_stride;                                                                   \
     const int me = shmem_my_pe();                                                                           \
-    int me_as = (me - PE_start) / stride;                                                                   \
-    size_t nbytes = sizeof(_type) * nreduce;                                                                \
-    _type *tmp_dest;                                                                                        \
-    int i, j;                                                                                               \
+    const int me_as = (me - PE_start) / stride;                                                             \
+    const size_t nbytes = sizeof(_type) * nreduce;                                                          \
+                                                                                                            \
+    _type *tmp_array;                                                                                       \
+    int i;                                                                                                  \
                                                                                                             \
     shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
                                                                                                             \
     if (me_as == 0) {                                                                                       \
-        tmp_dest = malloc(nbytes);                                                                          \
-        if (!tmp_dest) {                                                                                    \
+        tmp_array = malloc(nbytes);                                                                         \
+        if (!tmp_array) {                                                                                   \
             /* TODO: raise error */                                                                         \
             exit(-1);                                                                                       \
         }                                                                                                   \
                                                                                                             \
-        memcpy(tmp_dest, source, nbytes);                                                                   \
+        memcpy(tmp_array, source, nbytes);                                                                  \
                                                                                                             \
         for (i = 1; i < PE_size; i++) {                                                                     \
             shmem_getmem(dest, source, nbytes, PE_start + i * stride);                                      \
-            for (j = 0; j < nreduce; j++) {                                                                 \
-                tmp_dest[j] = _op(tmp_dest[j], dest[j]);                                                    \
-            }                                                                                               \
+            local_##_name##_reduce(tmp_array, tmp_array, dest, nreduce);                                    \
         }                                                                                                   \
                                                                                                             \
-        memcpy(dest, tmp_dest, nbytes);                                                                     \
-        free(tmp_dest);                                                                                     \
+        memcpy(dest, tmp_array, nbytes);                                                                    \
+        free(tmp_array);                                                                                    \
     }                                                                                                       \
                                                                                                             \
     shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
-}                                                                                                           \
                                                                                                             \
-void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduce, int PE_start,            \
-                                               int logPE_stride, int PE_size, _type *pWrk, long *pSync) {   \
-    _name##_helper_linear(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);             \
     shcoll_broadcast8_linear(dest, dest, nreduce * sizeof(_type),                                           \
                              PE_start, PE_start, logPE_stride, PE_size, pSync + 1);                         \
 }                                                                                                           \
@@ -67,23 +66,24 @@ void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduc
  */
 
 #define REDUCE_HELPER_BINOMIAL(_name, _type, _op)                                                           \
-inline static void _name##_helper_binomial(_type *dest, const _type *source, int nreduce, int PE_start,     \
-                                          int logPE_stride, int PE_size, _type *pWrk, long *pSync) {        \
+void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nreduce, int PE_start,          \
+                                      int logPE_stride, int PE_size, _type *pWrk, long *pSync) {            \
     const int stride = 1 << logPE_stride;                                                                   \
     const int me = shmem_my_pe();                                                                           \
     int me_as = (me - PE_start) / stride;                                                                   \
     int target_as;                                                                                          \
     size_t nbytes = sizeof(_type) * nreduce;                                                                \
-    _type *tmp_dest;                                                                                        \
+    _type *tmp_array = NULL;                                                                                \
     int i;                                                                                                  \
     unsigned mask = 0x1;                                                                                    \
     long old_pSync = SHCOLL_SYNC_VALUE;                                                                     \
     long to_receive = 0;                                                                                    \
     long recv_mask;                                                                                         \
                                                                                                             \
-    tmp_dest = malloc(nbytes);                                                                              \
-    if (!tmp_dest) {                                                                                        \
+    tmp_array = malloc(nbytes);                                                                             \
+    if (!tmp_array) {                                                                                       \
         /* TODO: raise error */                                                                             \
+        fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                   \
         exit(-1);                                                                                           \
     }                                                                                                       \
                                                                                                             \
@@ -99,7 +99,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
     /* TODO: fix if SHCOLL_SYNC_VALUE not 0 */                                                              \
     /* Wait until all messages are received */                                                              \
     while (to_receive != 0) {                                                                               \
-        memcpy(tmp_dest, dest, nbytes);                                                                     \
+        memcpy(tmp_array, dest, nbytes);                                                                    \
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, old_pSync);                                              \
         recv_mask = shmem_long_atomic_fetch(pSync, me);                                                     \
                                                                                                             \
@@ -110,9 +110,7 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         target_as = (int) (me_as | recv_mask);                                                              \
         shmem_getmem(dest, dest, nbytes, PE_start + target_as * stride);                                    \
                                                                                                             \
-        for (i = 0; i < nreduce; i++) {                                                                     \
-            dest[i] = _op(dest[i], tmp_dest[i]);                                                            \
-        }                                                                                                   \
+        local_##_name##_reduce(dest, dest, tmp_array, nreduce);                                             \
                                                                                                             \
         /* Mark as received */                                                                              \
         to_receive &= ~recv_mask;                                                                           \
@@ -125,25 +123,22 @@ inline static void _name##_helper_binomial(_type *dest, const _type *source, int
         shmem_long_atomic_add(pSync, me_as ^ target_as, PE_start + target_as * stride);                     \
     }                                                                                                       \
                                                                                                             \
-    *pSync = SHCOLL_SYNC_VALUE;                                                                             \
-   shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync + 1);                                       \
-}                                                                                                           \
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                             \
+    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync + 1);                                      \
                                                                                                             \
-void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nreduce, int PE_start,          \
-                                      int logPE_stride, int PE_size, _type *pWrk, long *pSync) {            \
-    _name##_helper_binomial(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);           \
-                                                                                                            \
-    shcoll_broadcast8_binomial_tree(dest, dest, nreduce * sizeof(_type)     ,                               \
+    shcoll_broadcast8_binomial_tree(dest, dest, nreduce * sizeof(_type),                                    \
                                     PE_start, PE_start, logPE_stride, PE_size, pSync + 2);                  \
-}
+                                                                                                            \
+    free(tmp_array);                                                                                        \
+}                                                                                                           \
 
 /*
  * Recursive doubling implementation
  */
 
 #define REDUCE_HELPER_REC_DBL(_name, _type, _op)                                                            \
-inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int nreduce, int PE_start,      \
-                                          int logPE_stride, int PE_size, _type *pWrk, long *pSync) {        \
+void shcoll_##_name##_to_all_rec_dbl(_type *dest, const _type *source, int nreduce, int PE_start,           \
+                                     int logPE_stride, int PE_size, _type *pWrk, long *pSync) {             \
     const int stride = 1 << logPE_stride;                                                                   \
     const int me = shmem_my_pe();                                                                           \
     int peer;                                                                                               \
@@ -174,36 +169,32 @@ inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int 
         me_p2s = -1;                                                                                        \
     }                                                                                                       \
                                                                                                             \
+    /* If current PE belongs to the power 2 set, it will need temporary buffer */                           \
+    if (me_p2s != -1) {                                                                                     \
+        tmp_array = malloc(nreduce * sizeof(_type));                                                        \
+        if (tmp_array == NULL) {                                                                            \
+            /* TODO: raise error */                                                                         \
+            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                               \
+            exit(-1);                                                                                       \
+        }                                                                                                   \
+    }                                                                                                       \
+                                                                                                            \
     /* Check if the current PE should wait/send data to the peer */                                         \
     if (me_p2s == -1) {                                                                                     \
-                                                                                                            \
         /* Notify peer that the data is ready */                                                            \
         peer = PE_start + (me_as - 1) * stride;                                                             \
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                   \
     } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                \
         /* We should wait for the data to be ready */                                                       \
         peer = PE_start + (me_as + 1) * stride;                                                             \
-        tmp_array = malloc(nbytes);                                                                         \
-        if (tmp_array == NULL) {                                                                            \
-            /* TODO: raise error */                                                                         \
-            exit(-1);                                                                                       \
-        }                                                                                                   \
                                                                                                             \
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                      \
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                         \
                                                                                                             \
         /* Get the array and reduce */                                                                      \
         shmem_getmem(dest, source, nbytes, peer);                                                           \
-        for (i = 0; i < nreduce; i++) {                                                                     \
-            tmp_array[i] = _op(dest[i], source[i]);                                                         \
-        }                                                                                                   \
+        local_##_name##_reduce(tmp_array, dest, source, nreduce);                                           \
     } else {                                                                                                \
-        /* Init the temporary array */                                                                      \
-        tmp_array = malloc(nbytes);                                                                         \
-        if (tmp_array == NULL) {                                                                            \
-            /* TODO: raiser error */                                                                        \
-            exit(-1);                                                                                       \
-        }                                                                                                   \
         memcpy(tmp_array, source, nbytes);                                                                  \
     }                                                                                                       \
                                                                                                             \
@@ -249,14 +240,9 @@ inline static void _name##_helper_rec_dbl(_type *dest, const _type *source, int 
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                   \
     }                                                                                                       \
                                                                                                             \
-    if (tmp_array == NULL) {                                                                                \
+    if (tmp_array != NULL) {                                                                                \
         free(tmp_array);                                                                                    \
     }                                                                                                       \
-}                                                                                                           \
-                                                                                                            \
-void shcoll_##_name##_to_all_rec_dbl(_type *dest, const _type *source, int nreduce, int PE_start,           \
-                                     int logPE_stride, int PE_size, _type *pWrk, long *pSync) {             \
-    _name##_helper_rec_dbl(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);            \
 }                                                                                                           \
 
 /*
@@ -264,8 +250,8 @@ void shcoll_##_name##_to_all_rec_dbl(_type *dest, const _type *source, int nredu
  */
 
 #define REDUCE_HELPER_RABENSEIFNER(_name, _type, _op)                                                       	\
-inline static void _name##_helper_rabenseifner(_type *dest, const _type *source, int nreduce, int PE_start, 	\
-                                               int logPE_stride, int PE_size, _type *pWrk, long *pSync) {   	\
+void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int nreduce, int PE_start,      	\
+                                          int logPE_stride, int PE_size, _type *pWrk, long *pSync) {        	\
     const int stride = 1 << logPE_stride;                                                                   	\
     const int me = shmem_my_pe();                                                                           	\
                                                                                                             	\
@@ -306,6 +292,7 @@ inline static void _name##_helper_rabenseifner(_type *dest, const _type *source,
         tmp_array = malloc((nreduce / 2 + 1) * sizeof(_type));                                              	\
         if (tmp_array == NULL) {                                                                            	\
             /* TODO: raise error */                                                                         	\
+            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                   \
             exit(-1);                                                                                       	\
         }                                                                                                   	\
     }                                                                                                       	\
@@ -451,10 +438,6 @@ inline static void _name##_helper_rabenseifner(_type *dest, const _type *source,
     }                                                                                                       	\
 }                                                                                                           	\
                                                                                                             	\
-void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int nreduce, int PE_start,      	\
-                                          int logPE_stride, int PE_size, _type *pWrk, long *pSync) {        	\
-    _name##_helper_rabenseifner(dest, source, nreduce, PE_start, logPE_stride, PE_size, pWrk, pSync);       	\
-}                                                                                                           	\
 
 /*
  * Supported reduction operations
@@ -532,16 +515,20 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
     _name(longlong_xor,     long long,  XOR_OP)             \
 
 
-SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LOCAL)
-SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LINEAR)
-SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_BINOMIAL)
-SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_REC_DBL)
-SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_RABENSEIFNER)
+/* @formatter:off */
 
-/*
-REDUCE_HELPER_LOCAL(int_sum, int, SUM_OP)
-REDUCE_HELPER_LINEAR(int_sum, int, SUM_OP)
-REDUCE_HELPER_BINOMIAL(int_sum, int, SUM_OP)
-REDUCE_HELPER_REC_DBL(int_sum, int, SUM_OP)
-REDUCE_HELPER_RABENSEIFNER(int_sum, int, SUM_OP)
-*/
+#ifndef CMAKE
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LOCAL)
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_LINEAR)
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_BINOMIAL)
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_REC_DBL)
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_RABENSEIFNER)
+#else
+    REDUCE_HELPER_LOCAL(int_sum, int, SUM_OP)
+    REDUCE_HELPER_LINEAR(int_sum, int, SUM_OP)
+    REDUCE_HELPER_BINOMIAL(int_sum, int, SUM_OP)
+    REDUCE_HELPER_REC_DBL(int_sum, int, SUM_OP)
+    REDUCE_HELPER_RABENSEIFNER(int_sum, int, SUM_OP)
+#endif
+
+/* @formatter:on */
