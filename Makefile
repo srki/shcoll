@@ -1,5 +1,6 @@
-CC=cc -g
-
+CC_FLAGS=-g -O2
+CC=cc $(CC_FLAGS)
+#CC=$(HOME)/libs/SOS/_install/bin/oshcc $(CC_FLAGS)
 
 all: build test
 

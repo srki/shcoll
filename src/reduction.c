@@ -34,7 +34,7 @@ void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduc
     _type *tmp_array;                                                                                       \
     int i;                                                                                                  \
                                                                                                             \
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);                                          \
                                                                                                             \
     if (me_as == 0) {                                                                                       \
         tmp_array = malloc(nbytes);                                                                         \
@@ -54,7 +54,7 @@ void shcoll_##_name##_to_all_linear(_type *dest, const _type *source, int nreduc
         free(tmp_array);                                                                                    \
     }                                                                                                       \
                                                                                                             \
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);                                          \
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);                                          \
                                                                                                             \
     shcoll_broadcast8_linear(dest, dest, nreduce * sizeof(_type),                                           \
                              PE_start, PE_start, logPE_stride, PE_size, pSync + 1);                         \
@@ -124,7 +124,7 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
     }                                                                                                       \
                                                                                                             \
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                             \
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync + 1);                                      \
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync + 1);                                      \
                                                                                                             \
     shcoll_broadcast8_binomial_tree(dest, dest, nreduce * sizeof(_type),                                    \
                                     PE_start, PE_start, logPE_stride, PE_size, pSync + 2);                  \

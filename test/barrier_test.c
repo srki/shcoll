@@ -1,32 +1,47 @@
 #include "barrier.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "util/util.h"
 #include "util/debug.h"
+#include "util/run.h"
 
 typedef void (*barrier_impl)(int, int, int, long *);
 
-void test(barrier_impl barrier, int iterations, int log2stride, char *name, long SYNC_VALUE, size_t BARRIER_SYNC_SIZE) {
+static inline void shcoll_barrier_shmem(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+    shmem_barrier(PE_start, logPE_stride, PE_size, pSync);
+}
+
+double test_barrier(barrier_impl barrier, int iterations, int log2stride,
+                  long SYNC_VALUE, size_t BARRIER_SYNC_SIZE) {
     long *pSync = shmem_malloc(BARRIER_SYNC_SIZE * sizeof(long));
     for (int i = 0; i < BARRIER_SYNC_SIZE; i++) {
         pSync[i] = SYNC_VALUE;
     }
     shmem_barrier_all();
 
-    unsigned long long start = current_time_ns();
+    // Warmup
+    for (int i = 0; i < (iterations / 10); i++) {
+        barrier(0, log2stride, shmem_n_pes() >> log2stride, pSync);
+    }
+
+    time_ns_t start = current_time_ns();
+
     for (int i = 0; i < iterations; i++) {
         barrier(0, log2stride, shmem_n_pes() >> log2stride, pSync);
     }
 
-    if (shmem_my_pe() == 0) {
-        gprintf("%s: %lf\n", name, (current_time_ns() - start) / 1e9);
-    }
+    shmem_barrier_all();
+    time_ns_t end = current_time_ns();
 
     shmem_free(pSync);
     shmem_barrier_all();
+
+    return (end - start) / 1e9;
 }
 
 int main(int argc, char **argv) {
-    int iterations = 25000;
+    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
+    int logPE_stride = 0;
 
     shmem_init();
 
@@ -34,17 +49,23 @@ int main(int argc, char **argv) {
         gprintf("PEs: %d\n", shmem_n_pes());
     }
 
-    test(shmem_barrier, iterations, 0, "shmem", SHMEM_SYNC_VALUE, SHMEM_BARRIER_SYNC_SIZE);
-    test(shcoll_linear_barrier, iterations, 0, "Linear", SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
-    test(shcoll_dissemination_barrier, iterations, 0, "Dissemination", SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
-    test(shcoll_binomial_tree_barrier, iterations, 0, "Binomial", SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
+    RUN(barrier, shmem, iterations, logPE_stride, SHMEM_SYNC_VALUE, SHMEM_BARRIER_SYNC_SIZE);
+    RUN(barrier, dissemination, iterations, logPE_stride, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
+    RUN(barrier, binomial_tree, iterations, logPE_stride, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
 
-    for (int degree = 2; degree < 64; degree *= 2) {
-        char name[50];
-        sprintf(name, "Complete - %d", degree);
+    for (int degree = 2; degree <= 32; degree *= 2) {
         shcoll_set_tree_degree(degree);
-        test(shcoll_complete_tree_barrier, iterations, 0, name, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
+        if (shmem_my_pe() == 0) gprintf("[%2d]", degree);
+        RUN(barrier, complete_tree, iterations, logPE_stride, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
     }
+
+    for (int k = 2; k <= 32; k++) {
+        shcoll_set_knomial_tree_radix_barrier(k);
+        if (shmem_my_pe() == 0) gprintf("[%2d]", k);
+        RUN(barrier, knomial_tree, iterations, logPE_stride, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
+    }
+
+    RUN(barrier, linear, iterations, logPE_stride, SHCOLL_SYNC_VALUE, SHCOLL_BARRIER_SYNC_SIZE);
 
     shmem_finalize();
     return 0;

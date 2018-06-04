@@ -25,7 +25,7 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
 
     /* set offset to 0 */
     offset[0] = 0;
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 
     if (me_as == 0) {
         shmem_size_atomic_add(offset, nbytes + 1, me + stride);
@@ -49,7 +49,7 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
     }
 
     /* Wait for all PEs to send the data to PE_start */
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 
     // TODO: fix
     shcoll_broadcast64_linear(offset, offset, 1, PE_start, PE_start, logPE_stride, PE_size, pSync + 4);
@@ -84,7 +84,7 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
     size_t block_offset;
 
     exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
-    shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 
     memcpy(((char*) dest) + block_offset, source, nbytes_round);
 
@@ -141,7 +141,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
 
     // Calculate prefix sum
     exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
-    shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 
     // Broadcast the total size
     shmem_long_p(pSync + 1, block_offset + nbytes, me);
@@ -175,7 +175,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
         shmem_size_wait_until(block_sizes + round, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
     }
 
-    shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 
     *(pSync + 1) = SHCOLL_SYNC_VALUE;
 

@@ -16,11 +16,11 @@ inline static void broadcast_helper_linear(void *target, const void *source, siz
     const int root = (PE_root * stride) + PE_start;
     const int me = shmem_my_pe();
 
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
     if (me != root) {
         shmem_char_get(target, source, nbytes, root);
     }
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 }
 
 inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
@@ -186,7 +186,6 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
         /* dist = ceil((right - let) / 2) */
         dist = ((right - left) >> 1) + ((right - left) & 0x1);
         mid = left + dist;
-
 
         /* Send (right - mid) elements starting with mid to pe + dist */
         if (me_as == left && me_as + dist < right) {

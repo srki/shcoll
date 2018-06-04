@@ -2,46 +2,47 @@
 #include "util/trees.h"
 
 static int tree_degree_barrier = 2;
+static int knomial_tree_radix_barrier = 2;
 
 void shcoll_set_tree_degree(int tree_degree) {
     tree_degree_barrier = tree_degree;
+}
+
+void shcoll_set_knomial_tree_radix_barrier(int tree_radix) {
+    knomial_tree_radix_barrier = tree_radix;
 }
 
 /*
  * Linear barrier implementation
  */
 
-inline static void barrier_sync_helper_linear(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_linear(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
-    const int stride = 1 << log2stride;
-
-    const long npokes = size - 1;
-    const long poke = SHCOLL_SYNC_VALUE + 1;
-    const long reset = SHCOLL_SYNC_VALUE;
+    const int stride = 1 << logPE_stride;
 
     int i;
     int pe;
 
-    if (start == me) {
+    if (PE_start == me) {
         /* wait for the rest of the AS to poke me */
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes);
-        shmem_long_put(pSync, &reset, 1, me);
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, reset);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + PE_size - 1);
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
 
         /* send acks out */
-        pe = start + stride;
-        for (i = 1; i < size; i += 1) {
-            shmem_long_put(pSync, &poke, 1, pe);
+        pe = PE_start + stride;
+        for (i = 1; i < PE_size; i += 1) {
+            shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, pe);
             pe += stride;
         }
     } else {
         /* poke root */
-        shmem_long_atomic_inc(pSync, start);
+        shmem_long_atomic_inc(pSync, PE_start);
 
         /* get ack */
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
-        shmem_long_put(pSync, &reset, 1, me);
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, reset);
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
     }
 }
 
@@ -49,19 +50,19 @@ inline static void barrier_sync_helper_linear(int start, int log2stride, int siz
  * Complete tree barrier implementation
  */
 
-inline static void barrier_sync_helper_complete_tree(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_complete_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
-    const int stride = 1 << log2stride;
+    const int stride = 1 << logPE_stride;
 
     int child;
     long npokes;
     node_info_complete_t node;
 
     /* Get my index in the active set */
-    const int me_as = (me - start) / stride;
+    const int me_as = (me - PE_start) / stride;
 
     /* Get node info */
-    get_node_info_complete(size, tree_degree_barrier, me_as, &node);
+    get_node_info_complete(PE_size, tree_degree_barrier, me_as, &node);
 
     /* Wait for pokes from the children */
     npokes = node.children_num;
@@ -71,17 +72,17 @@ inline static void barrier_sync_helper_complete_tree(int start, int log2stride, 
 
     if (node.parent != -1) {
         /* Poke the parent exists */
-        shmem_long_atomic_inc(pSync, start + node.parent * stride);
+        shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
 
         /* Wait for the poke from parent */
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
     }
 
     /* Clear pSync and poke the children */
-    *pSync = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 
     for (child = node.children_begin; child != node.children_end; child++) {
-        shmem_long_atomic_inc(pSync, start + child * stride);
+        shmem_long_atomic_inc(pSync, PE_start + child * stride);
     }
 }
 
@@ -89,19 +90,19 @@ inline static void barrier_sync_helper_complete_tree(int start, int log2stride, 
  * Binomial tree barrier implementation
  */
 
-inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_binomial_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
-    const int stride = 1 << log2stride;
+    const int stride = 1 << logPE_stride;
+
+    /* Get my index in the active set */
+    const int me_as = (me - PE_start) / stride;
 
     int i;
     long npokes;
     node_info_binomial_t node; /* TODO: try static */
 
-    /* Get my index in the active set */
-    const int me_as = (me - start) / stride;
-
     /* Get node info */
-    get_node_info_binomial(size, me_as, &node);
+    get_node_info_binomial(PE_size, me_as, &node);
 
     /* Wait for pokes from the children */
     npokes = node.children_num;
@@ -110,18 +111,59 @@ inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, 
     }
 
     if (node.parent != -1) {
-        /* Poke the parent exists */
-        shmem_long_atomic_inc(pSync, start + node.parent * stride);
+        /* Poke the parent */
+        shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
 
         /* Wait for the poke from parent */
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
     }
 
     /* Clear pSync and poke the children */
-    *pSync = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 
     for (i = 0; i < node.children_num; i++) {
-        shmem_long_atomic_inc(pSync, start + node.children[i] * stride);
+        shmem_long_atomic_inc(pSync, PE_start + node.children[i] * stride);
+    }
+}
+
+/*
+ * Knomial tree barrier implementation
+ */
+
+inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+    const int me = shmem_my_pe();
+    const int npes = shmem_n_pes();
+    const int stride = 1 << logPE_stride;
+
+    /* Get my index in the active set */
+    const int me_as = (me - PE_start) / stride;
+
+    int i;
+    long npokes;
+    node_info_knomial_t node;
+
+    /* Get node info */
+    get_node_info_knomial(PE_size, knomial_tree_radix_barrier, me_as, &node);
+
+    /* Wait for pokes from the children */
+    npokes = node.children_num;
+    if (npokes != 0) {
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes);
+    }
+
+    if (node.parent != -1) {
+        /* Poke the parent */
+        shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
+
+        /* Wait for the poke from parent */
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
+    }
+
+    /* Clear pSync and poke the children */
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+
+    for (i = 0; i < node.children_num; i++) {
+        shmem_long_atomic_inc(pSync, PE_start + node.children[i] * stride);
     }
 }
 
@@ -129,22 +171,22 @@ inline static void barrier_sync_helper_binomial_tree(int start, int log2stride, 
  * Dissemination barrier implementation
  */
 
-inline static void barrier_sync_helper_dissemination(int start, int log2stride, int size, long *pSync) {
+inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
-    const int stride = 1 << log2stride;
+    const int stride = 1 << logPE_stride;
+
+    /* Calculate my index in the active set */
+    const int me_as = (me - PE_start) / stride;
 
     int round;
     int distance;
     int target_as;
 
-    /* Calculate my index in the active set */
-    const int me_as = (me - start) / stride;
-
-    for (round = 0, distance = 1; distance < size; round++, distance <<= 1) {
-        target_as = (me_as + distance) % size;
+    for (round = 0, distance = 1; distance < PE_size; round++, distance <<= 1) {
+        target_as = (me_as + distance) % PE_size;
 
         /* Poke the target for the current round */
-        shmem_long_atomic_inc(&pSync[round], start + target_as * stride);
+        shmem_long_atomic_inc(&pSync[round], PE_start + target_as * stride);
 
         /* Wait until poked in this round */
         shmem_long_wait_until(&pSync[round], SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
@@ -160,37 +202,35 @@ static long barrier_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
 static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
 
 
-#define SHCOLL_BARRIER_DEFINITION(_name, _helper)                               \
-    void shcoll_##_name##_barrier(int PE_start, int logPE_stride,               \
-                                  int PE_size, long *pSync) {                   \
+#define SHCOLL_BARRIER_SYNC_DEFINITION(_name)                                   \
+    void shcoll_barrier_##_name(int PE_start, int logPE_stride,                 \
+                                int PE_size, long *pSync) {                     \
         shmem_quiet();                                                          \
-        _helper(PE_start, logPE_stride, PE_size, pSync);                        \
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
     }                                                                           \
                                                                                 \
-    void shcoll_##_name##_barrier_all() {                                       \
+    void shcoll_barrier_all_##_name() {                                         \
         shmem_quiet();                                                          \
-        _helper(0, 0, shmem_n_pes(), barrier_all_pSync);                        \
-    }
-
-SHCOLL_BARRIER_DEFINITION(linear, barrier_sync_helper_linear)
-SHCOLL_BARRIER_DEFINITION(complete_tree, barrier_sync_helper_complete_tree)
-SHCOLL_BARRIER_DEFINITION(binomial_tree, barrier_sync_helper_binomial_tree)
-SHCOLL_BARRIER_DEFINITION(dissemination, barrier_sync_helper_dissemination)
-
-
-#define SHCOLL_SYNC_DEFINITION(_name, _helper)                                  \
-    void shcoll_##_name##_sync(int PE_start, int logPE_stride,                  \
-                               int PE_size, long *pSync) {                      \
-        _helper(PE_start, logPE_stride, PE_size, pSync);                        \
-        /* TODO: memory fence */                                                \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), barrier_all_pSync);    \
     }                                                                           \
                                                                                 \
-    void shcoll_##_name##_sync_all() {                                          \
-        _helper(0, 0, shmem_n_pes(), sync_all_pSync);                           \
+    void shcoll_sync_##_name(int PE_start, int logPE_stride,                    \
+                             int PE_size, long *pSync) {                        \
         /* TODO: memory fence */                                                \
-    }
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
+    }                                                                           \
+                                                                                \
+    void shcoll_sync_all_##_name() {                                            \
+        /* TODO: memory fence */                                                \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), sync_all_pSync);       \
+    }                                                                           \
 
-SHCOLL_SYNC_DEFINITION(linear, barrier_sync_helper_linear)
-SHCOLL_SYNC_DEFINITION(complete_tree, barrier_sync_helper_complete_tree)
-SHCOLL_SYNC_DEFINITION(binomial_tree, barrier_sync_helper_binomial_tree)
-SHCOLL_SYNC_DEFINITION(dissemination, barrier_sync_helper_dissemination)
+/* @formatter:off */
+
+SHCOLL_BARRIER_SYNC_DEFINITION(linear)
+SHCOLL_BARRIER_SYNC_DEFINITION(complete_tree)
+SHCOLL_BARRIER_SYNC_DEFINITION(knomial_tree)
+SHCOLL_BARRIER_SYNC_DEFINITION(binomial_tree)
+SHCOLL_BARRIER_SYNC_DEFINITION(dissemination)
+
+/* @formatter:on */

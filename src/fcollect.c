@@ -25,13 +25,13 @@ inline static void fcollect_helper_linear(void *dest, const void *source, size_t
     /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
 
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
     if (me_as != 0) {
         shmem_char_put(dest + me_as * nbytes, source, nbytes, PE_start);
     } else {
         memcpy(dest, source, nbytes);
     }
-    shcoll_linear_barrier(PE_start, logPE_stride, PE_size, pSync);
+    shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 
     shcoll_broadcast8_linear(dest, dest, nbytes * shmem_n_pes(), 0, PE_start, logPE_stride, PE_size, pSync + 1);
 }

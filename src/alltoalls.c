@@ -35,7 +35,7 @@ void shcoll_alltoalls##_size##_##_name(void *dest, const void *source, ptrdiff_t
     }                                                                                                               \
                                                                                                                     \
     /* TODO: change to auto shcoll barrier */                                                                       \
-    shcoll_binomial_tree_barrier(PE_start, logPE_stride, PE_size, pSync);                                           \
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);                                           \
 }                                                                                                                   \
 
 
