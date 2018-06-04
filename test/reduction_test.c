@@ -1,4 +1,5 @@
 #include "reduction.h"
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "util/util.h"
