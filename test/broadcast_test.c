@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     int npes = shmem_n_pes();
 
     if (shmem_my_pe() == 0) {
-        gprintf("PEs: %d; iterations: %d; size: %zu\n", shmem_n_pes(), iterations, count);
+        gprintf("PEs: %d; iterations: %d; size: %zu\n", npes, iterations, count);
     }
 
     RUN(broadcast32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_BCAST_SYNC_SIZE);
