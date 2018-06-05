@@ -168,7 +168,7 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
             data_end = (right * nbytes + PE_size - 1) / PE_size;
             target_pe = PE_start + (root_as + me_as + dist) % PE_size * stride;
 
-            shmem_putmem_nbi(((char *) target) + data_start, ((char *) source) + data_start,
+            shmem_putmem_nbi((char *) target + data_start, (char *) source + data_start,
                              data_end - data_start, target_pe);
             shmem_fence();
             shmem_long_atomic_inc(pSync, target_pe);
@@ -196,7 +196,7 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
         data_start = (next_block * nbytes + PE_size - 1) / PE_size;
         data_end = ((next_block + 1) * nbytes + PE_size - 1) / PE_size;
 
-        shmem_putmem_nbi(((char *) target) + data_start, ((char *) source) + data_start,
+        shmem_putmem_nbi((char *) target + data_start, (char *) source + data_start,
                          data_end - data_start, next_pe);
         shmem_fence();
         shmem_long_atomic_inc(pSync + 1, next_pe);
