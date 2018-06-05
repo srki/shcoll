@@ -18,17 +18,17 @@ inline static void broadcast_helper_linear(void *target, const void *source, siz
 
     shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
     if (me != root) {
-        shmem_char_get(target, source, nbytes, root);
+        shmem_getmem(target, source, nbytes, root);
     }
     shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 }
+
 
 inline static void broadcast_helper_complete_tree(void *target, const void *source, size_t nbytes, int PE_root,
                                                   int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
-    int parent;
     int child;
     int dst;
     node_info_complete_t node;
@@ -36,53 +36,38 @@ inline static void broadcast_helper_complete_tree(void *target, const void *sour
     /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
 
-    /* Get my index after tree root and broadcast root swap */
-    /* TODO: remove if */
-    if (me_as == PE_root) {
-        me_as = 0;
-    } else if (me_as == 0) {
-        me_as = PE_root;
-    }
-
     /* Get information about children */
-    get_node_info_complete(PE_size, tree_degree_broadcast, me_as, &node);
+    get_node_info_complete_root(PE_size, PE_root, tree_degree_broadcast, me_as, &node);
 
     /* Wait for the data form the parent */
-    if (me_as != 0) {
+    if (PE_root != me) {
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         source = target;
 
         /* Send ack */
-        parent = node.parent;
-        /* TODO: remove if */
-        if (parent == PE_root) {
-            parent = 0;
-        } else if (parent == 0) {
-            parent = PE_root;
-        }
-        shmem_long_atomic_inc(pSync, PE_start + parent * stride);
+        shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
     }
 
     /* Send data to children */
     if (node.children_num != 0) {
-        for (child = node.children_begin; child != node.children_end; child++) {
-            dst = PE_start + (child == PE_root ? 0 : child) * stride;
-            shmem_char_put_nbi(target, source, nbytes, dst);
+        for (child = node.children_begin; child != node.children_end; child = (child + 1) % PE_size) {
+            dst = PE_start + child * stride;
+            shmem_putmem_nbi(target, source, nbytes, dst);
         }
 
         shmem_fence();
 
-        for (child = node.children_begin; child != node.children_end; child++) {
-            dst = PE_start + (child == PE_root ? 0 : child) * stride;
+        for (child = node.children_begin; child != node.children_end; child = (child + 1) % PE_size) {
+            dst = PE_start + child * stride;
             shmem_long_atomic_inc(pSync, dst);
         }
 
-
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (PE_root == me ? 0 : 1));
     }
 
-    *pSync = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
+
 
 inline static void broadcast_helper_binomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
                                                   int PE_start, int logPE_stride, int PE_size, long *pSync) {
@@ -97,45 +82,34 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
     /* Get my index in the active set */
     int me_as = (me - PE_start) / stride;
 
-    /* Get my index after tree root and broadcast root swap */
-    if (me_as == PE_root) {
-        me_as = 0;
-    } else if (me_as == 0) {
-        me_as = PE_root;
-    }
-
     /* Get information about children */
-    get_node_info_binomial(PE_size, me_as, &node);
+    get_node_info_binomial_root(PE_size, PE_root, me_as, &node);
 
     /* Wait for the data form the parent */
-    if (me_as != 0) {
+    if (me_as != PE_root) {
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
         source = target;
+
         /* Send ack */
         parent = node.parent;
-        if (parent == PE_root) {
-            parent = 0;
-        } else if (parent == 0) {
-            parent = PE_root;
-        }
         shmem_long_atomic_inc(pSync, PE_start + parent * stride);
     }
 
-    /* TODO: try inc-get-inc instead of put and inc (probably not necessary because binomial is used for short msgs) */
     /* Send data to children */
     if (node.children_num != 0) {
         for (i = 0; i < node.children_num; i++) {
-            dst = PE_start + (node.children[i] == PE_root ? 0 : node.children[i]) * stride;
-            shmem_char_put_nbi(target, source, nbytes, dst);
+            dst = PE_start + node.children[i] * stride;
+            shmem_putmem_nbi(target, source, nbytes, dst);
             shmem_fence();
             shmem_long_atomic_inc(pSync, dst);
         }
 
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == 0 ? 0 : 1));
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == PE_root ? 0 : 1));
     }
 
-    *pSync = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
+
 
 
 inline static void broadcast_helper_scatter_collect(void *target, const void *source, size_t nbytes, int PE_root,
@@ -194,8 +168,8 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
             data_end = (right * nbytes + PE_size - 1) / PE_size;
             target_pe = PE_start + (root_as + me_as + dist) % PE_size * stride;
 
-            shmem_putmem(((char *) target) + data_start, ((char *) source) + data_start,
-                         data_end - data_start, target_pe);
+            shmem_putmem_nbi(((char *) target) + data_start, ((char *) source) + data_start,
+                             data_end - data_start, target_pe);
             shmem_fence();
             shmem_long_atomic_inc(pSync, target_pe);
         }
@@ -217,13 +191,13 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
         }
     }
 
-
     /* Do collect using (modified) ring algorithm */
     while (next_pe_nblocks != PE_size) {
         data_start = (next_block * nbytes + PE_size - 1) / PE_size;
         data_end = ((next_block + 1) * nbytes + PE_size - 1) / PE_size;
 
-        shmem_putmem(((char *) target) + data_start, ((char *) source) + data_start, data_end - data_start, next_pe);
+        shmem_putmem_nbi(((char *) target) + data_start, ((char *) source) + data_start,
+                         data_end - data_start, next_pe);
         shmem_fence();
         shmem_long_atomic_inc(pSync + 1, next_pe);
 
@@ -246,8 +220,8 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
     }
 
     // TODO: maybe only one pSync is enough
-    pSync[0] = SHCOLL_SYNC_VALUE;
-    pSync[1] = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync + 0, SHCOLL_SYNC_VALUE, me);
+    shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE, me);
 }
 
 

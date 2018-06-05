@@ -3,6 +3,8 @@
 
 #include <limits.h>
 
+#define MAX_KNOMIAL_RADIX 32
+
 typedef struct {
     int parent;
     int children_num;
@@ -11,11 +13,14 @@ typedef struct {
 
 void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_info);
 
+void get_node_info_binomial_root(int tree_size, int root, int node, node_info_binomial_t *node_info);
+
 
 typedef struct {
     int parent;
     int children_num;
-    int children[32 * 6];
+    /* (max_radix - 1) * log_(max_radix) * max_radix */
+    int children[(MAX_KNOMIAL_RADIX-1) * 6];
 } node_info_knomial_t;
 
 void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *node_info);
@@ -29,5 +34,7 @@ typedef struct _node_info_complete {
 } node_info_complete_t;
 
 void get_node_info_complete(int tree_size, int tree_degree, int node, node_info_complete_t *node_info);
+
+void get_node_info_complete_root(int tree_size, int root, int tree_degree, int node, node_info_complete_t *node_info);
 
 #endif /* OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H */
