@@ -35,6 +35,8 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
     }
 
     #ifdef WARMUP
+    shmem_barrier_all();
+
     for (int i = 0; i < iterations / 10; i++) {
         int root = i % npes;
         shmem_barrier_all();
