@@ -139,13 +139,15 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
     size_t block_offset;
     size_t total_nbytes;
 
-    // Calculate prefix sum
+    /* Calculate prefix sum */
     exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
     shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 
-    // Broadcast the total size
-    shmem_long_p(pSync + 1, block_offset + nbytes, me);
-    shmem_long_wait_until(pSync + 1, SHMEM_CMP_EQ, block_offset + nbytes);
+    /* Broadcast the total size */
+    if (me_as == PE_size - 1) {
+        shmem_long_p(pSync + 1, block_offset + nbytes, me);
+        shmem_long_wait_until(pSync + 1, SHMEM_CMP_EQ, block_offset + nbytes);
+    }
 
     shcoll_broadcast64_binomial_tree(pSync + 1, pSync + 1, 1, PE_start + stride * (PE_size - 1),
                                      PE_start, logPE_stride, PE_size, pSync + 2);
@@ -177,7 +179,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
 
     shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 
-    *(pSync + 1) = SHCOLL_SYNC_VALUE;
+    shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE, me);
 
     rotate(dest, total_nbytes, block_offset);
 }
