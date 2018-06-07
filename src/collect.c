@@ -24,7 +24,7 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
     int i;
 
     /* set offset to 0 */
-    offset[0] = 0;
+    shmem_size_p(offset, 0, me);
     shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 
     if (me_as == 0) {
@@ -36,25 +36,24 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
 
         /* Send offset to everybody */
         for (i = 1; i < PE_size; i++) {
-            shmem_size_put(offset, offset, 1, PE_start + i * stride);
+            shmem_size_p(offset, *offset, PE_start + i * stride);
         }
     } else {
         shmem_size_wait_until(offset, SHMEM_CMP_NE, 0);
 
+        /* Write data to PE 0 */
+        shmem_putmem_nbi((char *) dest + *offset - 1, source, nbytes, PE_start);
+
         /* Send offset to the next PE, PE_start will contain full array size */
         shmem_size_atomic_add(offset, nbytes + *offset, PE_start + ((me_as + 1) % PE_size) * stride);
-
-        /* Write data to PE 0 */
-        shmem_char_put((char *) dest + *offset - 1, source, nbytes, PE_start);
     }
 
     /* Wait for all PEs to send the data to PE_start */
     shcoll_barrier_linear(PE_start, logPE_stride, PE_size, pSync);
 
-    // TODO: fix
-    shcoll_broadcast64_linear(offset, offset, 1, PE_start, PE_start, logPE_stride, PE_size, pSync + 4);
-
     shcoll_broadcast8_linear(dest, dest, *offset - 1, PE_start, PE_start, logPE_stride, PE_size, pSync + 1);
+
+    shmem_size_p(offset, SHCOLL_SYNC_VALUE, me);
 }
 
 /* TODO Find a better way to choose this value */
