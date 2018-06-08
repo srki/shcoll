@@ -2,6 +2,8 @@
 // Created by Srdan Milakovic on 5/18/18.
 //
 
+#include <stdlib.h>
+#include <memory.h>
 #include "rotate.h"
 
 static inline size_t gcd(size_t a, size_t b) {
@@ -17,7 +19,7 @@ static inline size_t gcd(size_t a, size_t b) {
     }
 }
 
-void rotate(char *arr, size_t size, size_t dist) {
+void rotate_inplace(char *arr, size_t size, size_t dist) {
     size_t i, j, k;
     char temp;
 
@@ -46,4 +48,14 @@ void rotate(char *arr, size_t size, size_t dist) {
         }
         arr[j] = temp;
     }
+}
+
+void rotate(char *arr, size_t size, size_t dist) {
+    char *tmp = malloc(dist);
+
+    memcpy(tmp, arr + (size - dist), dist);
+    memmove(arr + dist, arr, (size - dist));
+    memcpy(arr, tmp, dist);
+
+    free(tmp);
 }

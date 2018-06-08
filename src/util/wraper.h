@@ -26,6 +26,16 @@ static void *shmem_calloc(size_t count, size_t size) {
     return mem;
 }
 
+#endif
+
+#ifndef CRAY_SHMEM_NUMVERSION
+
+static void shmem_putmem_signal_nb(void *dest, const void *source, size_t nelems,
+                                   uint64_t *sig_addr, uint64_t sig_value, int pe, void **transfer_handle) {
+    shmem_putmem_nbi(dest, source, nelems, pe);
+    shmem_fence();
+    shmem_uint64_p(sig_addr, sig_value, pe);
+}
 
 #endif
 
