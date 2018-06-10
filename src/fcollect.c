@@ -62,6 +62,26 @@ inline static void fcollect_helper_all_linear(void *dest, const void *source, si
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
 
+inline static void fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
+                                              int logPE_stride, int PE_size, long *pSync) {
+    const int stride = 1 << logPE_stride;
+    const int npes = shmem_n_pes();
+    const int me = shmem_my_pe();
+    const int me_as = (me - PE_start) / stride;
+
+    int i;
+    int target;
+
+    for (i = 1; i < npes; i++) {
+        target = PE_start + ((i + me_as) % npes) * stride;
+        shmem_putmem_nbi((char*) dest + me_as * nbytes, source, nbytes, target);
+    }
+
+    memcpy((char*) dest + me_as * nbytes, source, nbytes);
+
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
+}
+
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
@@ -354,6 +374,9 @@ SHCOLL_FCOLLECT_DEFINITION(linear, 64)
 
 SHCOLL_FCOLLECT_DEFINITION(all_linear, 32)
 SHCOLL_FCOLLECT_DEFINITION(all_linear, 64)
+
+SHCOLL_FCOLLECT_DEFINITION(all_linear1, 32)
+SHCOLL_FCOLLECT_DEFINITION(all_linear1, 64)
 
 SHCOLL_FCOLLECT_DEFINITION(rec_dbl, 32)
 SHCOLL_FCOLLECT_DEFINITION(rec_dbl, 64)

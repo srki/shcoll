@@ -1,6 +1,7 @@
 CC_FLAGS=-g -O2
 CC=cc $(CC_FLAGS)
 #CC=$(HOME)/libs/SOS/_install/bin/oshcc $(CC_FLAGS)
+#CC=$(HOME)/libs/SOS-1.4.1/_install/bin/oshcc -std=c99 -D_POSIX_C_SOURCE=199309L $(CC_FLAGS)
 
 all: build test
 
