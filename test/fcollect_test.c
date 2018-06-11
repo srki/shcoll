@@ -13,7 +13,8 @@
 #include "util/run.h"
 
 #define VERIFYx
-#define PRINT
+#define PRINTx
+#define WARMUP
 
 typedef void (*fcollect_impl)(void *, const void *, size_t, int, int, int, long *);
 
@@ -22,8 +23,8 @@ static inline void shcoll_fcollect32_shmem(void *dest, const void *source, size_
     shmem_fcollect32(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync);
 }
 
-double
-test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
+double test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem,
+                       long SYNC_VALUE, size_t COLLECT_SYNC_SIZE) {
     long *pSync = shmem_malloc(COLLECT_SYNC_SIZE * sizeof(long));
     for (int i = 0; i < COLLECT_SYNC_SIZE; i++) {
         pSync[i] = SYNC_VALUE;
@@ -41,6 +42,16 @@ test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_
     for (int i = 0; i < nelem; i++) {
         src[i] = (uint32_t) (total_nelem - me * nelem - i);
     }
+
+
+    #ifdef WARMUP
+    shmem_barrier_all();
+
+    for (int i = 0; i < iterations / 10; i++) {
+        shmem_barrier_all();
+        fcollect(dst, src, nelem, 0, 0, npes, pSync);
+    }
+    #endif
 
     shmem_barrier_all();
     unsigned long long start = current_time_ns();
@@ -93,22 +104,46 @@ test_fcollect32(fcollect_impl fcollect, int iterations, size_t nelem, long SYNC_
 }
 
 int main(int argc, char *argv[]) {
-    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
-    size_t count = (size_t) (argc > 2 ? strtol(argv[2], NULL, 0) : 1);
+    int iterations;
+    size_t count;
 
+    time_ns_t start = current_time_ns();
     shmem_init();
+    time_ns_t end = current_time_ns();
+
+    int me = shmem_my_pe();
     int npes = shmem_n_pes();
 
     if (shmem_my_pe() == 0) {
-        gprintf("[%s]PEs: %d\n", __FILE__, shmem_n_pes());
+        gprintf("shmem_init: %lf\n", (end - start) / 1e9);
     }
 
-    RUN(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUNC(npes % 2 == 0, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUNC(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+    // @formatter:off
+
+    for (int i = 1; i < argc; i++) {
+        sscanf(argv[i], "%d:%zu", &iterations, &count);
+
+        RUN_CSV(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+
+        RUNC_CSV(count >= 256, fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(npes % 2 == 0 && count >= 32, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+
+        RUNC_CSV(count <= 256, fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(count <= 256, fcollect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(count <= 256, fcollect32, bruck_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(0, fcollect32, bruck_inplace, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+
+        RUNC_CSV(npes <= 96, fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(count <= 256, fcollect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC_CSV(count <= 256, fcollect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+
+        if (shmem_my_pe() == 0) {
+            gprintf("\n\n\n\n");
+        }
+    }
+
+    // @formatter:on
 
     shmem_finalize();
 }
