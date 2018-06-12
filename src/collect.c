@@ -7,6 +7,7 @@
 #include <limits.h>
 #include "util/rotate.h"
 #include "util/scan.h"
+#include "util/broadcast-size.h"
 #include "barrier.h"
 #include "broadcast.h"
 #include "../test/util/run.h"
@@ -56,16 +57,76 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
     shmem_size_p(offset, SHCOLL_SYNC_VALUE, me);
 }
 
+inline static void collect_helper_all_linear(void *dest, const void *source, size_t nbytes, int PE_start,
+                                         int logPE_stride, int PE_size, long *pSync) {
+    /* pSync[0] is used for counting received messages
+     * pSync[1..1+PREFIX_SUM_SYNC_SIZE) is used for prefix sum
+     * next sizeof(size_t) bytes are used for the offset */
+
+    const int stride = 1 << logPE_stride;
+    const int npes = shmem_n_pes();
+    const int me = shmem_my_pe();
+    const int me_as = (me - PE_start) / stride;
+    size_t block_offset;
+
+    int i;
+    int target;
+
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
+
+    for (i = 1; i < npes; i++) {
+        target = PE_start + ((i + me_as) % npes) * stride;
+        shmem_putmem_nbi((char*) dest + block_offset, source, nbytes, target);
+    }
+
+    memcpy((char*) dest + block_offset, source, nbytes);
+
+    for (i = 1; i < npes; i++) {
+        target = PE_start + ((i + me_as) % npes) * stride;
+        shmem_long_atomic_inc(pSync, target);
+    }
+
+    shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npes - 1);
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+}
+
+inline static void collect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
+                                             int logPE_stride, int PE_size, long *pSync) {
+    /* pSync[0] is used for barrier
+     * pSync[1..1+PREFIX_SUM_SYNC_SIZE) is used for prefix sum
+     * next sizeof(size_t) bytes are used for the offset */
+
+    const int stride = 1 << logPE_stride;
+    const int npes = shmem_n_pes();
+    const int me = shmem_my_pe();
+    const int me_as = (me - PE_start) / stride;
+    size_t block_offset;
+
+    int i;
+    int target;
+
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
+
+    for (i = 1; i < npes; i++) {
+        target = PE_start + ((i + me_as) % npes) * stride;
+        shmem_putmem_nbi((char*) dest + block_offset, source, nbytes, target);
+    }
+
+    memcpy((char*) dest + block_offset, source, nbytes);
+
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
+}
+
+
 /* TODO Find a better way to choose this value */
 #define RING_DIFF 10
 
 inline static void collect_helper_ring(void *dest, const void *source, size_t nbytes, int PE_start,
                                        int logPE_stride, int PE_size, long *pSync) {
     /*
-     * pSync[0] is used for barrier
-     * pSync[1..] is used for exclusive prefix sum
-     * pSync[1] is to track the progress of the left PE
-     * pSync[2..] is used to receive block sizes
+     * pSync[0] is to track the progress of the left PE
+     * pSync[1..RING_DIFF] is used to receive block sizes
+     * pSync[RING_DIFF..] is used for exclusive prefix sum
      */
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
@@ -75,21 +136,20 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
     int send_to_pe = PE_start + ((me_as - 1 + PE_size) % PE_size) * stride;
 
     int round;
-    long *receiver_progress = pSync + 1;
-    size_t *block_sizes = (size_t *) (pSync + 2);
+    long *receiver_progress = pSync;
+    size_t *block_sizes = (size_t *) (pSync + 1);
     size_t *block_size_round;
     size_t nbytes_round = nbytes;
 
     size_t block_offset;
 
-    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
-    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1 + RING_DIFF);
 
-    memcpy(((char*) dest) + block_offset, source, nbytes_round);
+    memcpy(((char *) dest) + block_offset, source, nbytes_round);
 
     for (round = 0; round < PE_size - 1; round++) {
 
-        shmem_putmem_nbi(((char *) dest) + block_offset, ((char *) dest) + block_offset, nbytes_round , send_to_pe);
+        shmem_putmem_nbi(((char *) dest) + block_offset, ((char *) dest) + block_offset, nbytes_round, send_to_pe);
         shmem_fence();
 
         /* Wait until it's safe to use block_size buffer */
@@ -97,7 +157,6 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
         block_size_round = block_sizes + (round % RING_DIFF);
 
         // TODO: fix -> shmem_size_p(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
-        // shmem_size_atomic_add(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
         shmem_size_atomic_set(block_size_round, nbytes_round + 1 + SHCOLL_SYNC_VALUE, send_to_pe);
 
         /* If writing block 0, reset offset to 0 */
@@ -121,6 +180,12 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
 
 inline static void collect_helper_bruck(void *dest, const void *source, size_t nbytes, int PE_start,
                                         int logPE_stride, int PE_size, long *pSync) {
+    /* pSync[0] is used for barrier
+     * pSync[1] is used for broadcast
+     * pSync[2..2+PREFIX_SUM_SYNC_SIZE) bytes are used for the prefix sum
+     * pSync[2+PREFIX_SUM_SYNC_SIZE..2+PREFIX_SUM_SYNC_SIZE+32) bytes are used for the Bruck's algorithm, block sizes */
+    /* TODO change 32 with a constant */
+
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -133,25 +198,24 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
     size_t recv_nbytes = nbytes;
     size_t round_nbytes;
 
-    size_t *block_sizes = (size_t *) (pSync + 3);
+    /* pSyncs */
+    long *barrier_pSync = pSync;
+    long *broadcast_pSync = barrier_pSync + 1;
+    long *prefix_sum_pSync = (broadcast_pSync + 1);
+    size_t *block_sizes = (size_t *) (prefix_sum_pSync + PREFIX_SUM_SYNC_SIZE);
 
     size_t block_offset;
     size_t total_nbytes;
 
     /* Calculate prefix sum */
-    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, pSync + 1);
-    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, prefix_sum_pSync);
 
     /* Broadcast the total size */
     if (me_as == PE_size - 1) {
-        shmem_long_p(pSync + 1, block_offset + nbytes, me);
-        shmem_long_wait_until(pSync + 1, SHMEM_CMP_EQ, block_offset + nbytes);
+        total_nbytes = block_offset + nbytes;
     }
 
-    shcoll_broadcast64_binomial_tree(pSync + 1, pSync + 1, 1, PE_start + stride * (PE_size - 1),
-                                     PE_start, logPE_stride, PE_size, pSync + 2);
-
-    total_nbytes = (size_t) *(pSync + 1);
+    broadcast_size(&total_nbytes, PE_start + (PE_size - 1) * stride, PE_start, logPE_stride, PE_size, broadcast_pSync);
 
     /* Copy the local block to the destination */
     memcpy(dest, source, nbytes);
@@ -168,6 +232,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
         round_nbytes = *(block_sizes + round) - 1 - SHCOLL_SYNC_VALUE;
 
         round_nbytes = recv_nbytes + round_nbytes < total_nbytes ? round_nbytes : total_nbytes - recv_nbytes;
+
         shmem_getmem(dest + recv_nbytes, dest, round_nbytes, recv_from);
         recv_nbytes += round_nbytes;
 
@@ -176,9 +241,7 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
         shmem_size_wait_until(block_sizes + round, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
     }
 
-    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
-
-    shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE, me);
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, barrier_pSync);
 
     rotate(dest, total_nbytes, block_offset);
 }
@@ -196,10 +259,19 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
 SHCOLL_COLLECT_DEFINITION(linear, 32)
 SHCOLL_COLLECT_DEFINITION(linear, 64)
 
+SHCOLL_COLLECT_DEFINITION(all_linear, 32)
+SHCOLL_COLLECT_DEFINITION(all_linear, 64)
+
+SHCOLL_COLLECT_DEFINITION(all_linear1, 32)
+SHCOLL_COLLECT_DEFINITION(all_linear1, 64)
+
 SHCOLL_COLLECT_DEFINITION(ring, 32)
 SHCOLL_COLLECT_DEFINITION(ring, 64)
 
 SHCOLL_COLLECT_DEFINITION(bruck, 32)
 SHCOLL_COLLECT_DEFINITION(bruck, 64)
+
+SHCOLL_COLLECT_DEFINITION(bruck_no_rotate, 32)
+SHCOLL_COLLECT_DEFINITION(bruck_no_rotate, 64)
 
 /* @formatter:on */
