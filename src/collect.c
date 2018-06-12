@@ -246,6 +246,87 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
     rotate(dest, total_nbytes, block_offset);
 }
 
+inline static void collect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes, int PE_start,
+                                                  int logPE_stride, int PE_size, long *pSync) {
+    /* pSync[0] is used for barrier
+     * pSync[1] is used for broadcast
+     * pSync[2..2+PREFIX_SUM_SYNC_SIZE) bytes are used for the prefix sum
+     * pSync[2+PREFIX_SUM_SYNC_SIZE..2+PREFIX_SUM_SYNC_SIZE+32) bytes are used for the Bruck's algorithm, block sizes */
+    /* TODO change 32 with a constant */
+
+    const int stride = 1 << logPE_stride;
+    const int me = shmem_my_pe();
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+    size_t distance;
+    int round;
+    int send_to;
+    int recv_from;
+    size_t recv_nbytes = nbytes;
+    size_t round_nbytes;
+
+    /* pSyncs */
+    long *barrier_pSync = pSync;
+    long *broadcast_pSync = barrier_pSync + 1;
+    long *prefix_sum_pSync = (broadcast_pSync + 1);
+    size_t *block_sizes = (size_t *) (prefix_sum_pSync + PREFIX_SUM_SYNC_SIZE);
+
+    size_t block_offset;
+    size_t total_nbytes;
+
+    size_t next_block_start;
+
+    /* Calculate prefix sum */
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, prefix_sum_pSync);
+
+    /* Broadcast the total size */
+    if (me_as == PE_size - 1) {
+        total_nbytes = block_offset + nbytes;
+    }
+
+    broadcast_size(&total_nbytes, PE_start + (PE_size - 1) * stride, PE_start, logPE_stride, PE_size, broadcast_pSync);
+
+    /* Copy the local block to the destination */
+    memcpy((char*) dest + block_offset, source, nbytes);
+
+    for (distance = 1, round = 0; distance < PE_size; distance <<= 1, round++) {
+        send_to = (int) (PE_start + ((me_as - distance + PE_size) % PE_size) * stride);
+        recv_from = (int) (PE_start + ((me_as + distance) % PE_size) * stride);
+
+        /* Notify partner that the data is ready */
+        shmem_size_atomic_set(block_sizes + round, recv_nbytes + 1 + SHCOLL_SYNC_VALUE, send_to);
+
+        /* Wait until the data is ready to be read */
+        shmem_size_wait_until(block_sizes + round, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        round_nbytes = *(block_sizes + round) - 1 - SHCOLL_SYNC_VALUE;
+
+        round_nbytes = recv_nbytes + round_nbytes < total_nbytes ? round_nbytes : total_nbytes - recv_nbytes;
+
+        next_block_start = block_offset + recv_nbytes < total_nbytes ? block_offset + recv_nbytes :
+                           block_offset + recv_nbytes - total_nbytes;
+
+        if (next_block_start + round_nbytes <= total_nbytes) {
+            shmem_getmem((char*) dest + next_block_start, (char*) dest + next_block_start, round_nbytes, recv_from);
+        } else {
+            shmem_getmem_nbi((char*) dest + next_block_start, (char*) dest + next_block_start,
+                             total_nbytes - next_block_start, recv_from);
+
+            shmem_getmem_nbi(dest, dest, round_nbytes - (total_nbytes - next_block_start), recv_from);
+
+            shmem_quiet();
+        }
+
+        recv_nbytes += round_nbytes;
+
+        /* Reset the block size from the current round */
+        shmem_size_p(block_sizes + round, SHCOLL_SYNC_VALUE, me);
+        shmem_size_wait_until(block_sizes + round, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
+    }
+
+    shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, barrier_pSync);
+}
+
 #define SHCOLL_COLLECT_DEFINITION(_name, _size)                                                         \
     void shcoll_collect##_size##_##_name(void *dest, const void *source, size_t nelems,                 \
                                          int PE_start, int logPE_stride, int PE_size, long *pSync) {    \

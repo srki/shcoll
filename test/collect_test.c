@@ -10,7 +10,7 @@
 #include "util/debug.h"
 #include "util/run.h"
 
-#define VERIFYx
+#define VERIFY
 #define PRINTx
 
 #define WARMUP
@@ -177,23 +177,46 @@ double test_collect32(collect_impl collect, int iterations, size_t count, long S
 #endif
 
 int main(int argc, char *argv[]) {
-    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
-    size_t count = (size_t) (argc > 2 ? strtol(argv[2], NULL, 0) : 1);
+    int iterations;
+    size_t count;
 
+    time_ns_t start = current_time_ns();
     shmem_init();
+    time_ns_t end = current_time_ns();
+
+    int me = shmem_my_pe();
     int npes = shmem_n_pes();
 
     if (shmem_my_pe() == 0) {
-        gprintf("PEs: %d; iterations: %d; size: %zu\n", npes, iterations, count);
+        #ifdef CSV
+        gprintf("shmem_init: %lf\n", (end - start) / 1e9);
+        #endif
     }
 
-    RUN(collect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-    RUN(collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    RUN(collect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-//    RUN(collect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    RUN(collect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-    RUN(collect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+    // @formatter:off
+
+    for (int i = 1; i < argc; i++) {
+        sscanf(argv[i], "%d:%zu", &iterations, &count);
+
+        RUN(collect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+        RUN(collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUN(collect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUN(collect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUN(collect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUN(collect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+
+        if (me == 0) {
+            #ifdef CSV
+            gprintf("\n\n\n\n");
+            #else
+            gprintf("\n");
+            #endif
+        }
+    }
+
+    // @formatter:on
+
 
     shmem_finalize();
 }

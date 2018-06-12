@@ -10,6 +10,9 @@
 #include <collect.h>
 #include "util/util.h"
 #include "util/debug.h"
+
+#define CSVx
+
 #include "util/run.h"
 
 #define VERIFYx
@@ -114,8 +117,10 @@ int main(int argc, char *argv[]) {
     int me = shmem_my_pe();
     int npes = shmem_n_pes();
 
-    if (shmem_my_pe() == 0) {
+    if (me == 0) {
+        #ifdef CSV
         gprintf("shmem_init: %lf\n", (end - start) / 1e9);
+        #endif
     }
 
     // @formatter:off
@@ -123,23 +128,27 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         sscanf(argv[i], "%d:%zu", &iterations, &count);
 
-        RUN_CSV(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
+        RUN(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
 
-        RUNC_CSV(count >= 256, fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(npes % 2 == 0 && count >= 32, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count >= 256, fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(npes % 2 == 0 && count >= 32, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
-        RUNC_CSV(count <= 256, fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(count <= 256, fcollect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(count <= 256, fcollect32, bruck_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(0, fcollect32, bruck_inplace, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count <= 256, fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count <= 256, fcollect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count <= 256, fcollect32, bruck_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(0, fcollect32, bruck_inplace, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
-        RUNC_CSV(npes <= 96, fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(count <= 256, fcollect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC_CSV(count <= 256, fcollect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(npes <= 96, fcollect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count <= 256, fcollect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count <= 256, fcollect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
-        if (shmem_my_pe() == 0) {
+        if (me == 0) {
+            #ifdef CSV
             gprintf("\n\n\n\n");
+            #else
+            gprintf("\n");
+            #endif
         }
     }
 
