@@ -25,6 +25,8 @@ typedef struct {
 
 void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *node_info);
 
+void get_node_info_knomial_root(int tree_size, int root, int k, int node, node_info_knomial_t *node_info);
+
 
 typedef struct _node_info_complete {
     int parent;

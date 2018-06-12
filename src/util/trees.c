@@ -104,6 +104,52 @@ void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *
     node_info->children_num = children_num;
 }
 
+void get_node_info_knomial_root(int tree_size, int root, int k, int node, node_info_knomial_t *node_info) {
+    int left = 0;
+    int right = tree_size;
+    int parent = -1;
+    int dist = -1, group;
+    int child, children_num = 0;
+
+    node = root <= node ? node - root : node - root + tree_size;
+
+    /* Find and set parent */
+    while (node != left) {
+        parent = left;
+
+        dist = (right - left + k - 1) / k;
+        group = (node - left) / dist;
+
+        int new_right = left + (group + 1) * dist;
+        right = new_right > right ? right : new_right;
+        left = left + group * dist;
+    }
+
+    if (node != 0) {
+        node_info->parent = parent + root < tree_size ? parent + root : parent + root - tree_size;
+    } else {
+        node_info->parent = -1;
+    }
+
+    /* Set children */
+    while (dist != 0) {
+        dist = (right - left + k - 1) / k;
+        child = left + dist * ((right - left - 1) / dist);
+        if (child == left) {
+            break;
+        }
+
+        do {
+            node_info->children[children_num++] = child + root < tree_size ? child + root : child + root - tree_size;
+            child -= dist;
+        } while (child > left);
+
+        right = left + dist;
+    }
+
+    node_info->children_num = children_num;
+}
+
 
 void get_node_info_complete(int tree_size, int tree_degree, int node, node_info_complete_t *node_info) {
     node_info->parent = node != 0 ? (node - 1) / tree_degree : -1;
