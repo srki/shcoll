@@ -81,6 +81,8 @@ inline static void collect_helper_all_linear(void *dest, const void *source, siz
 
     memcpy((char*) dest + block_offset, source, nbytes);
 
+    shmem_fence();
+
     for (i = 1; i < npes; i++) {
         target = PE_start + ((i + me_as) % npes) * stride;
         shmem_long_atomic_inc(pSync, target);
