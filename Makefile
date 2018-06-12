@@ -8,7 +8,7 @@ all: build test
 
 build: shcoll.a
 
-shcoll.a: bithacks.o trees.o rotate.o scan.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o
+shcoll.a: bithacks.o trees.o rotate.o scan.o barrier.o broadcast.o reduction.o collect.o fcollect.o alltoall.o alltoalls.o broadcast-size.o
 	ar cr shcoll.a $^
 
 bithacks.o: src/util/bithacks.c
@@ -21,6 +21,9 @@ rotate.o: src/util/rotate.c
 	$(CC) -c $< -o $@
 
 scan.o: src/util/scan.c
+	$(CC) -c $< -o $@
+
+broadcast-size.o: src/util/broadcast-size.c
 	$(CC) -c $< -o $@
 
 barrier.o: src/barrier.c

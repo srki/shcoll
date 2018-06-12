@@ -15,6 +15,7 @@ set(SOURCE_FILES
         src/util/wraper.h
         src/util/bithacks.c
         src/util/bithacks.h
+        src/util/broadcast-size.c
         src/barrier.c
         src/broadcast.c
         src/reduction.c
