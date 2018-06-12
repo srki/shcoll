@@ -117,6 +117,89 @@ inline static void collect_helper_all_linear1(void *dest, const void *source, si
     shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 }
 
+inline static void collect_helper_rec_dbl(void *dest, const void *source, size_t nbytes, int PE_start,
+                                          int logPE_stride, int PE_size, long *pSync) {
+    const int stride = 1 << logPE_stride;
+    const int me = shmem_my_pe();
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+    int mask;
+    int peer;
+    int i;
+    size_t round_block_size;
+    size_t block_offset;
+    size_t block_size = nbytes;
+
+    /* pSync */
+    long *prefix_sum_pSync = pSync;
+    size_t *block_sizes = (size_t *) (prefix_sum_pSync + PREFIX_SUM_SYNC_SIZE);
+
+    assert(((PE_size - 1) & PE_size) == 0);
+
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, prefix_sum_pSync);
+
+    memcpy((char*) dest + block_offset, source, nbytes);
+
+    for (mask = 0x1, i = 0; mask < PE_size; mask <<= 1, i++) {
+        peer = PE_start + (me_as ^ mask) * stride;
+
+        shmem_putmem_nbi((char*) dest + block_offset, (char*) dest + block_offset, block_size, peer);
+        shmem_fence();
+        shmem_size_p(block_sizes + i, block_size + 1 + SHCOLL_SYNC_VALUE, peer);
+
+        shmem_size_wait_until(block_sizes + i, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        round_block_size = *(block_sizes + i) - 1;
+        shmem_size_p(block_sizes + i, SHCOLL_SYNC_VALUE, me);
+
+        if (me > peer) {
+            block_offset -= round_block_size;
+        }
+        block_size += round_block_size;
+    }
+}
+
+inline static void collect_helper_rec_dbl_signal(void *dest, const void *source, size_t nbytes, int PE_start,
+                                                 int logPE_stride, int PE_size, long *pSync) {
+    const int stride = 1 << logPE_stride;
+    const int me = shmem_my_pe();
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+    int mask;
+    int peer;
+    int i;
+    size_t round_block_size;
+    size_t block_offset;
+    size_t block_size = nbytes;
+
+    /* pSync */
+    long *prefix_sum_pSync = pSync;
+    size_t *block_sizes = (size_t *) (prefix_sum_pSync + PREFIX_SUM_SYNC_SIZE);
+
+    assert(((PE_size - 1) & PE_size) == 0);
+
+    exclusive_prefix_sum(&block_offset, nbytes, PE_start, logPE_stride, PE_size, prefix_sum_pSync);
+
+    memcpy((char*) dest + block_offset, source, nbytes);
+
+    for (mask = 0x1, i = 0; mask < PE_size; mask <<= 1, i++) {
+        peer = PE_start + (me_as ^ mask) * stride;
+
+        shmem_putmem_signal_nb((char*) dest + block_offset, (char*) dest + block_offset, block_size,
+                               (uint64_t *) (block_sizes + i), block_size + 1 + SHCOLL_SYNC_VALUE, peer, NULL);
+
+        shmem_size_wait_until(block_sizes + i, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        round_block_size = *(block_sizes + i) - 1 - SHCOLL_SYNC_VALUE;
+        shmem_size_p(block_sizes + i, SHCOLL_SYNC_VALUE, me);
+
+        if (me > peer) {
+            block_offset -= round_block_size;
+        }
+        block_size += round_block_size;
+    }
+}
+
 
 /* TODO Find a better way to choose this value */
 #define RING_DIFF 10
@@ -345,6 +428,12 @@ SHCOLL_COLLECT_DEFINITION(all_linear, 64)
 
 SHCOLL_COLLECT_DEFINITION(all_linear1, 32)
 SHCOLL_COLLECT_DEFINITION(all_linear1, 64)
+
+SHCOLL_COLLECT_DEFINITION(rec_dbl, 32)
+SHCOLL_COLLECT_DEFINITION(rec_dbl, 64)
+
+SHCOLL_COLLECT_DEFINITION(rec_dbl_signal, 32)
+SHCOLL_COLLECT_DEFINITION(rec_dbl_signal, 64)
 
 SHCOLL_COLLECT_DEFINITION(ring, 32)
 SHCOLL_COLLECT_DEFINITION(ring, 64)
