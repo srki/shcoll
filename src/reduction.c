@@ -258,7 +258,8 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
     int me_as = (me - PE_start) / stride;                                                                       \
     int peer;                                                                                                   \
     size_t i;                                                                                                   \
-    int j;                                                                                                      \
+    const size_t nelems = (const size_t) nreduce;                                                               \
+                                                                                                                \
     int block_idx_begin;                                                                                        \
     int block_idx_end;                                                                                          \
                                                                                                                 \
@@ -289,7 +290,7 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
                                                                                                                 \
     /* If current PE belongs to the power 2 set, it will need temporary buffer */                               \
     if (me_p2s != -1) {                                                                                         \
-        tmp_array = malloc((nreduce / 2 + 1) * sizeof(_type));                                                  \
+        tmp_array = malloc((nelems / 2 + 1) * sizeof(_type));                                                   \
         if (tmp_array == NULL) {                                                                                \
             /* TODO: raise error */                                                                             \
             fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                   \
@@ -304,8 +305,8 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                       \
                                                                                                                 \
         /* Wait until the data on peer node is ready and get the data (upper half of the array) */              \
-        block_offset = nreduce / 2;                                                                             \
-        block_nelems = (size_t) (nreduce - block_offset);                                                       \
+        block_offset = nelems / 2;                                                                              \
+        block_nelems = (size_t) (nelems - block_offset);                                                        \
                                                                                                                 \
         shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                          \
         shmem_getmem(dest + block_offset, source + block_offset, block_nelems * sizeof(_type), peer);           \
@@ -324,7 +325,7 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
                                                                                                                 \
         /* Wait until the data on peer node is ready and get the data (lower half of the array) */              \
         block_offset = 0;                                                                                       \
-        block_nelems = (size_t) (nreduce / 2 - block_offset);                                                   \
+        block_nelems = (size_t) (nelems / 2 - block_offset);                                                    \
                                                                                                                 \
         shmem_long_wait_until(pSync, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE);                                          \
         shmem_getmem(dest, source, block_nelems * sizeof(_type), peer);                                         \
@@ -336,16 +337,13 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
         shmem_long_wait_until(pSync, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE + 1);                                      \
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                             \
     } else {                                                                                                    \
-        memcpy(dest, source, nreduce * sizeof(_type));                                                          \
+        memcpy(dest, source, nelems * sizeof(_type));                                                           \
     }                                                                                                           \
                                                                                                                 \
     /* For nodes in the power 2 set, dest contains data that should be reduced */                               \
                                                                                                                 \
     /* Do reduce scatter with the nodes in power 2 set */                                                       \
     if (me_p2s != -1) {                                                                                         \
-        block_offset = 0;                                                                                       \
-        block_nelems = (size_t) nreduce;                                                                        \
-                                                                                                                \
         block_idx_begin = 0;                                                                                    \
         block_idx_end = p2s_size;                                                                               \
                                                                                                                 \
@@ -365,8 +363,8 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
             }                                                                                                   \
                                                                                                                 \
             /* TODO: possible overflow */                                                                       \
-            block_offset = (block_idx_begin * nreduce) / p2s_size;                                              \
-            next_block_offset = (block_idx_end * nreduce) / p2s_size;                                           \
+            block_offset = (block_idx_begin * nelems) / p2s_size;                                               \
+            next_block_offset = (block_idx_end * nelems) / p2s_size;                                            \
             block_nelems = (size_t) (next_block_offset - block_offset);                                         \
                                                                                                                 \
             /* Wait until the data on peer PE is ready to be read and get the data */                           \
@@ -399,8 +397,8 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
             xchg_peer_pe = PE_start + xchg_peer_as * stride;                                                    \
                                                                                                                 \
             /* TODO: possible overflow */                                                                       \
-            block_offset = (block_idx_begin * nreduce) / p2s_size;                                              \
-            next_block_offset = (block_idx_end * nreduce) / p2s_size;                                           \
+            block_offset = (block_idx_begin * nelems) / p2s_size;                                               \
+            next_block_offset = (block_idx_end * nelems) / p2s_size;                                            \
             block_nelems = (size_t) (next_block_offset - block_offset);                                         \
                                                                                                                 \
             shmem_putmem(dest + block_offset, dest + block_offset,                                              \
@@ -428,7 +426,7 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
         shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE, me);                                                         \
     } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                    \
         peer = PE_start + (me_as + 1) * stride;                                                                 \
-        shmem_putmem(dest, dest, nreduce * sizeof(_type), peer);                                                \
+        shmem_putmem(dest, dest, nelems * sizeof(_type), peer);                                                 \
         shmem_fence();                                                                                          \
         shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE + 1, peer);                                                   \
     }                                                                                                           \
@@ -437,7 +435,193 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
         free(tmp_array);                                                                                        \
     }                                                                                                           \
 }                                                                                                               \
-                                                                                                                \
+
+
+#define REDUCE_HELPER_RABENSEIFNER2(_name, _type, _op)                                                              \
+void shcoll_##_name##_to_all_rabenseifner2(_type *dest, const _type *source, int nreduce, int PE_start,             \
+                                        int logPE_stride, int PE_size, _type *pWrk, long *pSync) {                  \
+    const int stride = 1 << logPE_stride;                                                                           \
+    const int me = shmem_my_pe();                                                                                   \
+                                                                                                                    \
+    int me_as = (me - PE_start) / stride;                                                                           \
+    int peer;                                                                                                       \
+    size_t i;                                                                                                       \
+                                                                                                                    \
+    const size_t nelems = (const size_t) nreduce;                                                                   \
+    int block_idx_begin;                                                                                            \
+    int block_idx_end;                                                                                              \
+                                                                                                                    \
+    ptrdiff_t block_offset;                                                                                         \
+    ptrdiff_t next_block_offset;                                                                                    \
+    size_t block_nelems;                                                                                            \
+                                                                                                                    \
+    int xchg_peer_p2s;                                                                                              \
+    int xchg_peer_as;                                                                                               \
+    int xchg_peer_pe;                                                                                               \
+                                                                                                                    \
+    int ring_peer_p2s;                                                                                              \
+    int ring_peer_as;                                                                                               \
+    int ring_peer_pe;                                                                                               \
+                                                                                                                    \
+    /* Power 2 set */                                                                                               \
+    int me_p2s;                                                                                                     \
+    int p2s_size;                                                                                                   \
+    int log_p2s_size;                                                                                               \
+                                                                                                                    \
+    int distance;                                                                                                   \
+    _type *tmp_array = NULL;                                                                                        \
+                                                                                                                    \
+    long *collect_pSync = pSync + (1 + sizeof(int) * CHAR_BIT);                                                     \
+                                                                                                                    \
+    /* Find the greatest power of 2 lower than PE_size */                                                           \
+    for (p2s_size = 1, log_p2s_size = 0; p2s_size * 2 <= PE_size; p2s_size *= 2, log_p2s_size++);                   \
+                                                                                                                    \
+    /* Check if the current PE belongs to the power 2 set */                                                        \
+    me_p2s = me_as * p2s_size / PE_size;                                                                            \
+    if ((me_p2s * PE_size + p2s_size - 1) / p2s_size != me_as) {                                                    \
+        me_p2s = -1;                                                                                                \
+    }                                                                                                               \
+                                                                                                                    \
+    /* If current PE belongs to the power 2 set, it will need temporary buffer */                                   \
+    if (me_p2s != -1) {                                                                                             \
+        tmp_array = malloc((nelems / 2 + 1) * sizeof(_type));                                                       \
+        if (tmp_array == NULL) {                                                                                    \
+            /* TODO: raise error */                                                                                 \
+            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                       \
+            exit(-1);                                                                                               \
+        }                                                                                                           \
+    }                                                                                                               \
+                                                                                                                    \
+    /* Check if the current PE should wait/send data to the peer */                                                 \
+    if (me_p2s == -1) {                                                                                             \
+        /* Notify peer that the data is ready */                                                                    \
+        peer = PE_start + (me_as - 1) * stride;                                                                     \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                           \
+                                                                                                                    \
+        /* Wait until the data on peer node is ready and get the data (upper half of the array) */                  \
+        block_offset = nelems / 2;                                                                                  \
+        block_nelems = (size_t) (nelems - block_offset);                                                            \
+                                                                                                                    \
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);                                              \
+        shmem_getmem(dest + block_offset, source + block_offset, block_nelems * sizeof(_type), peer);               \
+                                                                                                                    \
+        /* Reduce the upper half of the array */                                                                    \
+        local_##_name##_reduce(dest + block_offset, dest + block_offset, source + block_offset, block_nelems);      \
+                                                                                                                    \
+        /* Send the upper half of the array to peer */                                                              \
+        shmem_putmem(dest + block_offset, dest + block_offset, block_nelems * sizeof(_type), peer);                 \
+        shmem_fence();                                                                                              \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 2, peer);                                                           \
+    } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                        \
+        /* Notify peer that the data is ready */                                                                    \
+        peer = PE_start + (me_as + 1) * stride;                                                                     \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE + 1, peer);                                                           \
+                                                                                                                    \
+        /* Wait until the data on peer node is ready and get the data (lower half of the array) */                  \
+        block_offset = 0;                                                                                           \
+        block_nelems = (size_t) (nelems / 2 - block_offset);                                                        \
+                                                                                                                    \
+        shmem_long_wait_until(pSync, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE);                                              \
+        shmem_getmem(dest, source, block_nelems * sizeof(_type), peer);                                             \
+                                                                                                                    \
+        /* Do local reduce */                                                                                       \
+        local_##_name##_reduce(dest, dest, source, block_nelems);                                                   \
+                                                                                                                    \
+        /* Wait until the upper half is received from peer */                                                       \
+        shmem_long_wait_until(pSync, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE + 1);                                          \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                                                                 \
+    } else {                                                                                                        \
+        memcpy(dest, source, nelems * sizeof(_type));                                                               \
+    }                                                                                                               \
+                                                                                                                    \
+    /* For nodes in the power 2 set, dest contains data that should be reduced */                                   \
+                                                                                                                    \
+    /* Do reduce scatter with the nodes in power 2 set */                                                           \
+    if (me_p2s != -1) {                                                                                             \
+        block_idx_begin = 0;                                                                                        \
+        block_idx_end = p2s_size;                                                                                   \
+                                                                                                                    \
+        for (distance = 1, i = 1; distance < p2s_size; distance <<= 1, i++) {                                       \
+            xchg_peer_p2s = ((me_p2s & distance) == 0) ? me_p2s + distance : me_p2s - distance;                     \
+            xchg_peer_as = (xchg_peer_p2s * PE_size + p2s_size - 1) / p2s_size;                                     \
+            xchg_peer_pe = PE_start + xchg_peer_as * stride;                                                        \
+                                                                                                                    \
+            /* Notify the peer PE that the data is ready to be read */                                              \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 1, xchg_peer_pe);                                           \
+                                                                                                                    \
+            /* Check if the current PE is responsible for lower half of upper half of the vector */                 \
+            if ((me_p2s & distance) == 0) {                                                                         \
+                block_idx_end = (block_idx_begin + block_idx_end) / 2;                                              \
+            } else {                                                                                                \
+                block_idx_begin = (block_idx_begin + block_idx_end) / 2;                                            \
+            }                                                                                                       \
+                                                                                                                    \
+            /* TODO: possible overflow */                                                                           \
+            block_offset = (block_idx_begin * nelems) / p2s_size;                                                   \
+            next_block_offset = (block_idx_end * nelems) / p2s_size;                                                \
+            block_nelems = (size_t) (next_block_offset - block_offset);                                             \
+                                                                                                                    \
+            /* Wait until the data on peer PE is ready to be read and get the data */                               \
+            shmem_long_wait_until(pSync + i, SHMEM_CMP_GE, SHCOLL_SYNC_VALUE + 1);                                  \
+            shmem_getmem(tmp_array, dest + block_offset, block_nelems * sizeof(_type), xchg_peer_pe);               \
+                                                                                                                    \
+            /* Notify the peer PE that the data transfer has completed successfully */                              \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 2, xchg_peer_pe);                                           \
+                                                                                                                    \
+            /* Do local reduce */                                                                                   \
+            local_##_name##_reduce(dest + block_offset, dest + block_offset, tmp_array, block_nelems);              \
+                                                                                                                    \
+            /* Wait until the peer PE has read the data */                                                          \
+            shmem_long_wait_until(pSync + i, SHMEM_CMP_GE, SHCOLL_SYNC_VALUE + 2);                                  \
+            shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE, me);                                                         \
+        }                                                                                                           \
+    }                                                                                                               \
+                                                                                                                    \
+    /* For nodes in the power 2 set, destination will contain the reduced block */                                  \
+                                                                                                                    \
+    /* Do collect with the nodes in power 2 set */                                                                  \
+    if (me_p2s != -1) {                                                                                             \
+        ring_peer_p2s = (me_p2s + 1) % p2s_size;                                                                    \
+        ring_peer_as = (ring_peer_p2s * PE_size + p2s_size - 1) / p2s_size;                                         \
+        ring_peer_pe = PE_start + ring_peer_as * stride;                                                            \
+                                                                                                                    \
+        for (i = 0; i < p2s_size; i++) {                                                                            \
+            block_idx_begin = reverse_bits((int) ((me_p2s - i + p2s_size) % p2s_size), log_p2s_size);               \
+            block_idx_end = block_idx_begin + 1;                                                                    \
+                                                                                                                    \
+            /* TODO: possible overflow */                                                                           \
+            block_offset = (block_idx_begin * nelems) / p2s_size;                                                   \
+            next_block_offset = (block_idx_end * nelems) / p2s_size;                                                \
+            block_nelems = (size_t) (next_block_offset - block_offset);                                             \
+                                                                                                                    \
+            shmem_putmem_nbi(dest + block_offset, dest + block_offset,                                              \
+                             block_nelems * sizeof(_type), ring_peer_pe);                                           \
+            shmem_fence();                                                                                          \
+            shmem_long_p(collect_pSync, SHCOLL_SYNC_VALUE + i + 1, ring_peer_pe);                                   \
+                                                                                                                    \
+            shmem_long_wait_until(collect_pSync, SHMEM_CMP_GT, SHCOLL_SYNC_VALUE + i);                              \
+        }                                                                                                           \
+                                                                                                                    \
+        shmem_long_p(collect_pSync, SHCOLL_SYNC_VALUE, me);                                                         \
+    }                                                                                                               \
+                                                                                                                    \
+    /* Check if the current PE should wait/send data to the peer */                                                 \
+    if (me_p2s == -1) {                                                                                             \
+        /* Wait until the peer PE sends the data */                                                                 \
+        shmem_long_wait_until(pSync + 1, SHMEM_CMP_GE, SHCOLL_SYNC_VALUE + 1);                                      \
+        shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE, me);                                                             \
+    } else if ((me_as + 1) * p2s_size / PE_size == me_p2s) {                                                        \
+        peer = PE_start + (me_as + 1) * stride;                                                                     \
+        shmem_putmem(dest, dest, nelems * sizeof(_type), peer);                                                     \
+        shmem_fence();                                                                                              \
+        shmem_long_p(pSync + 1, SHCOLL_SYNC_VALUE + 1, peer);                                                       \
+    }                                                                                                               \
+                                                                                                                    \
+    if (tmp_array != NULL) {                                                                                        \
+        free(tmp_array);                                                                                            \
+    }                                                                                                               \
+}                                                                                                                   \
+
 
 /*
  * Supported reduction operations
@@ -523,12 +707,14 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
     SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_BINOMIAL)
     SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_REC_DBL)
     SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_RABENSEIFNER)
+    SHCOLL_REDUCE_DEFINE(REDUCE_HELPER_RABENSEIFNER2)
 #else
     REDUCE_HELPER_LOCAL(int_sum, int, SUM_OP)
     REDUCE_HELPER_LINEAR(int_sum, int, SUM_OP)
     REDUCE_HELPER_BINOMIAL(int_sum, int, SUM_OP)
     REDUCE_HELPER_REC_DBL(int_sum, int, SUM_OP)
     REDUCE_HELPER_RABENSEIFNER(int_sum, int, SUM_OP)
+    REDUCE_HELPER_RABENSEIFNER2(int_sum, int, SUM_OP)
 #endif
 
 /* @formatter:on */
