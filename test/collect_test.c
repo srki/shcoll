@@ -12,7 +12,7 @@
 #define CSV
 #include "util/run.h"
 
-#define VERIFY
+#define VERIFYx
 #define PRINTx
 
 #define WARMUP
@@ -52,8 +52,17 @@ double test_collect32(collect_impl fcollect, int iterations, size_t nelem,
     shmem_barrier_all();
 
     for (int i = 0; i < iterations / 10; i++) {
+        memset(dst, 0, total_nelem * sizeof(uint32_t));
+
         shmem_barrier_all();
         fcollect(dst, src, nelem, 0, 0, npes, pSync);
+
+        for (int j = 0; j < total_nelem; j++) {
+            if (total_nelem - j != dst[j]) {
+                gprintf("i:%d [%d] dst[%d] = %d; Expected %zu\n", i, shmem_my_pe(), j, dst[j], total_nelem - j);
+                abort();
+            }
+        }
     }
     #endif
 
@@ -189,9 +198,11 @@ int main(int argc, char *argv[]) {
     int me = shmem_my_pe();
     int npes = shmem_n_pes();
 
-    if (shmem_my_pe() == 0) {
+    if (me == 0) {
         #ifdef CSV
         gprintf("shmem_init: %lf\n", (end - start) / 1e9);
+        #else
+        gprintf("PEs: %d\n", npes);
         #endif
     }
 
@@ -201,14 +212,14 @@ int main(int argc, char *argv[]) {
         sscanf(argv[i], "%d:%zu", &iterations, &count);
 
         RUN(collect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
-        RUN(collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(count >= 256, collect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUNC(!((npes - 1) & npes), collect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUNC(!((npes - 1) & npes), collect32, rec_dbl_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
         RUN(collect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUN(collect32, bruck_no_rotate, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
-        RUN(collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(npes <= 16, collect32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUN(collect32, all_linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUN(collect32, all_linear1, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
@@ -223,7 +234,6 @@ int main(int argc, char *argv[]) {
     }
 
     // @formatter:on
-
 
     shmem_finalize();
 }
