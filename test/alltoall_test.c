@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     }
 
     RUN(alltoall32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_ALLTOALL_SYNC_SIZE);
-    RUN(alltoall32, loop, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+    RUN(alltoall32, shift_exchange_barrier, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
 
 
     shmem_finalize();

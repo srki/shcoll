@@ -13,7 +13,7 @@
                                           long *pSync);                                     \
 
 
-SHCOLL_ALLTOALL_DECLARATION(loop, 32)
-SHCOLL_ALLTOALL_DECLARATION(loop, 64)
+SHCOLL_ALLTOALL_DECLARATION(shift_exchange_barrier, 32)
+SHCOLL_ALLTOALL_DECLARATION(shift_exchange_barrier, 64)
 
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_ALLTOALL_H

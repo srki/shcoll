@@ -7,8 +7,8 @@
 #include <string.h>
 #include <limits.h>
 
-inline static void alltoall_helper_loop(void *dest, const void *source, size_t nelems, int PE_start,
-                                          int logPE_stride, int PE_size, long *pSync) {
+inline static void alltoall_helper_shift_exchange_barrier(void *dest, const void *source, size_t nelems, int PE_start,
+                                                          int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -43,6 +43,6 @@ inline static void alltoall_helper_loop(void *dest, const void *source, size_t n
 }                                                                                                       \
 
 
-SHCOLL_ALLTOALL_DEFINITION(loop, 32)
+SHCOLL_ALLTOALL_DEFINITION(shift_exchange_barrier, 32)
 
-SHCOLL_ALLTOALL_DEFINITION(loop, 64)
+SHCOLL_ALLTOALL_DEFINITION(shift_exchange_barrier, 64)
