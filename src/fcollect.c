@@ -37,15 +37,14 @@ inline static void fcollect_helper_linear(void *dest, const void *source, size_t
 inline static void fcollect_helper_all_linear(void *dest, const void *source, size_t nbytes, int PE_start,
                                               int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
-    const int npes = shmem_n_pes();
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
 
     int i;
     int target;
 
-    for (i = 1; i < npes; i++) {
-        target = PE_start + ((i + me_as) % npes) * stride;
+    for (i = 1; i < PE_size; i++) {
+        target = PE_start + ((i + me_as) % PE_size) * stride;
         shmem_putmem_nbi((char*) dest + me_as * nbytes, source, nbytes, target);
     }
 
@@ -53,27 +52,26 @@ inline static void fcollect_helper_all_linear(void *dest, const void *source, si
 
     shmem_fence();
 
-    for (i = 1; i < npes; i++) {
-        target = PE_start + ((i + me_as) % npes) * stride;
+    for (i = 1; i < PE_size; i++) {
+        target = PE_start + ((i + me_as) % PE_size) * stride;
         shmem_long_atomic_inc(pSync, target);
     }
 
-    shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npes - 1);
+    shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + PE_size - 1);
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
 
 inline static void fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
                                               int logPE_stride, int PE_size, long *pSync) {
     const int stride = 1 << logPE_stride;
-    const int npes = shmem_n_pes();
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
 
     int i;
     int target;
 
-    for (i = 1; i < npes; i++) {
-        target = PE_start + ((i + me_as) % npes) * stride;
+    for (i = 1; i < PE_size; i++) {
+        target = PE_start + ((i + me_as) % PE_size) * stride;
         shmem_putmem_nbi((char*) dest + me_as * nbytes, source, nbytes, target);
     }
 

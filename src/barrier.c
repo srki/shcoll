@@ -132,7 +132,6 @@ inline static void barrier_sync_helper_binomial_tree(int PE_start, int logPE_str
 
 inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
-    const int npes = shmem_n_pes();
     const int stride = 1 << logPE_stride;
 
     /* Get my index in the active set */
