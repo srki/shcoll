@@ -13,7 +13,7 @@
                                            int logPE_stride, int PE_size, long *pSync);     \
 
 
-SHCOLL_ALLTOALLS_DECLARATION(loop, 32)
-SHCOLL_ALLTOALLS_DECLARATION(loop, 64)
+SHCOLL_ALLTOALLS_DECLARATION(shift_exchange, 32)
+SHCOLL_ALLTOALLS_DECLARATION(shift_exchange, 64)
 
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_ALLTOALLS_H

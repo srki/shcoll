@@ -8,10 +8,10 @@
 #include <limits.h>
 
 
-#define SHCOLL_ALLTOALLS_DEFINITION(_name, _size)                                                                   \
-void shcoll_alltoalls##_size##_##_name(void *dest, const void *source, ptrdiff_t dst,                               \
-                                       ptrdiff_t sst, size_t nelems, int PE_start,                                  \
-                                       int logPE_stride, int PE_size, long *pSync) {                                \
+#define SHCOLL_ALLTOALLS_SHIFT_EXCHANGE_DEFINITION(_size)                                                           \
+void shcoll_alltoalls##_size##_shift_exchange(void *dest, const void *source, ptrdiff_t dst,                        \
+                                              ptrdiff_t sst, size_t nelems, int PE_start,                           \
+                                              int logPE_stride, int PE_size, long *pSync) {                         \
     const int stride = 1 << logPE_stride;                                                                           \
     const int me = shmem_my_pe();                                                                                   \
                                                                                                                     \
@@ -31,7 +31,7 @@ void shcoll_alltoalls##_size##_##_name(void *dest, const void *source, ptrdiff_t
         peer_as = (me_as + i) % PE_size;                                                                            \
         source_ptr = ((uint8_t *) source) + peer_as * sst * nelems * ((_size) / CHAR_BIT);                          \
                                                                                                                     \
-        shmem_iput##_size(dest_ptr, source_ptr, dst, sst, nelems, PE_start + peer_as * stride);   \
+        shmem_iput##_size(dest_ptr, source_ptr, dst, sst, nelems, PE_start + peer_as * stride);                     \
     }                                                                                                               \
                                                                                                                     \
     /* TODO: change to auto shcoll barrier */                                                                       \
@@ -40,6 +40,6 @@ void shcoll_alltoalls##_size##_##_name(void *dest, const void *source, ptrdiff_t
 
 
 
-SHCOLL_ALLTOALLS_DEFINITION(loop, 32)
+SHCOLL_ALLTOALLS_SHIFT_EXCHANGE_DEFINITION(32)
 
-SHCOLL_ALLTOALLS_DEFINITION(loop, 64)
+SHCOLL_ALLTOALLS_SHIFT_EXCHANGE_DEFINITION(64)

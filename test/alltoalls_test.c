@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
     }
 
     RUN(alltoalls32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_ALLTOALLS_SYNC_SIZE);
-    RUN(alltoalls32, loop, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALLS_SYNC_SIZE);
+    RUN(alltoalls32, shift_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALLS_SYNC_SIZE);
 
     shmem_finalize();
 
