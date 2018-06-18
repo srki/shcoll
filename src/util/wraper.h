@@ -39,4 +39,25 @@ static void shmem_putmem_signal_nb(void *dest, const void *source, size_t nelems
 
 #endif
 
+#define SHMEM_IPUT_NBI_DEFINITION(_size)                                                                            \
+inline static void shmem_iput##_size##_nbi(void *dest, const void *source,                                          \
+                                     ptrdiff_t dst, ptrdiff_t sst, size_t nelems, int pe) {                         \
+    int i;                                                                                                          \
+    uint##_size##_t *dest_ptr =  (uint##_size##_t *) dest;                                                          \
+    const uint##_size##_t *source_ptr = (const uint##_size##_t *) source;                                           \
+                                                                                                                    \
+    for (i = 0; i < nelems; i++) {                                                                                  \
+        shmem_put##_size##_nbi(dest_ptr, source_ptr, 1, pe);                                                        \
+        dest_ptr += dst;                                                                                            \
+        source_ptr += sst;                                                                                          \
+    }                                                                                                               \
+}                                                                                                                   \
+
+// @formatter:off
+
+SHMEM_IPUT_NBI_DEFINITION(32)
+SHMEM_IPUT_NBI_DEFINITION(64)
+
+// @formatter:on
+
 #endif //OPENSHMEM_COLLECTIVE_ROUTINES_WRAPER_1_3_H
