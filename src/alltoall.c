@@ -143,9 +143,11 @@ ALLTOALL_HELPER_SIGNAL_DEFINITION(shift_exchange, SHIFT_PEER, PE_size - 1 <= SHC
 
 
 #define XOR_PEER(I, ME, NPES) ((I) ^ (ME))
-ALLTOALL_HELPER_BARRIER_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0)
-ALLTOALL_HELPER_COUNTER_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0)
-ALLTOALL_HELPER_SIGNAL_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0 && PE_size - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
+#define XOR_COND (((PE_size - 1) & PE_size) == 0)
+
+ALLTOALL_HELPER_BARRIER_DEFINITION(xor_pairwise_exchange, XOR_PEER, XOR_COND)
+ALLTOALL_HELPER_COUNTER_DEFINITION(xor_pairwise_exchange, XOR_PEER, XOR_COND)
+ALLTOALL_HELPER_SIGNAL_DEFINITION(xor_pairwise_exchange, XOR_PEER, XOR_COND && PE_size - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
 
 
 #define COLOR_PEER(I, ME, NPES) edge_color(I, ME, NPES)
