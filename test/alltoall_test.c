@@ -3,7 +3,6 @@
 //
 
 #include "alltoall.h"
-#include <stdlib.h>
 #include <string.h>
 #include "util/util.h"
 
@@ -14,6 +13,9 @@
 #define PRINTx
 #define WARMUP
 
+#define CROP_VALUE 1000
+#define CROP(A) ((A) / CROP_VALUE)
+
 typedef void (*alltoall_impl)(void *, const void *, size_t, int, int, int, long *);
 
 void shcoll_alltoall32_shmem(void *dest, const void *source, size_t count,
@@ -21,16 +23,16 @@ void shcoll_alltoall32_shmem(void *dest, const void *source, size_t count,
     shmem_alltoall32(dest, source, count, PE_start, logPE_stride, PE_size, pSync);
 }
 
-int verify(const uint32_t *dst, size_t nelems, size_t total_nelems, int base_npes, int base_nelems) {
+int verify(const uint32_t *dst, size_t nelems, size_t total_nelems) {
     int me = shmem_my_pe();
 
     for (int j = 0, e_next = 0, p_next = 0; j < total_nelems; j++) {
         uint32_t value = dst[j];
-        int e = value % base_nelems;
-        int p = value / (base_nelems * base_npes);
-        int m = (value / base_nelems) % base_npes;
+        int e = value % CROP_VALUE;
+        int p = value / (CROP_VALUE * CROP_VALUE);
+        int m = (value / CROP_VALUE) % CROP_VALUE;
 
-        if (e != e_next || p != p_next || m != me) {
+        if (e != CROP(e_next) || p != CROP(p_next) || m != CROP(me)) {
             gprintf("[%d] dest[%d] = (%d, %d, %d); expected (%d, %d, %d)\n", me, j, e, p, m, e_next, p_next, me);
             return 0;
         }
@@ -57,17 +59,11 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
     uint32_t *source = shmem_malloc(total_nelems * sizeof(uint32_t));
     uint32_t *dest = shmem_malloc(total_nelems * sizeof(uint32_t));
 
-    int base_npes = 10;
-    while (base_npes <= npes) base_npes *= 10;
-
-    int base_nelems = 10;
-    while (base_nelems <= nelems) base_nelems *= 10;
-
     // src_PE | dst_PE | idx
     int idx = 0;
     for (int pe = 0; pe < npes; pe++) {
         for (int e = 0; e < nelems; e++) {
-            source[idx++] = (uint32_t) (e + base_nelems * pe + base_nelems * base_npes * me);
+            source[idx++] = (uint32_t) (CROP(e) + CROP_VALUE * CROP(pe) + CROP_VALUE * CROP_VALUE * CROP(me));
         }
     }
 
@@ -80,7 +76,7 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
         shmem_barrier_all();
         alltoall(dest, source, nelems, 0, 0, npes, pSync);
 
-        if (!verify(dest, nelems, total_nelems, base_npes, base_nelems)) {
+        if (!verify(dest, nelems, total_nelems)) {
             return -1.0;
         }
     }
@@ -112,7 +108,7 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
         #endif
 
         #ifdef VERIFY
-        if (!verify(dest, nelems, total_nelems, base_npes, base_nelems)) {
+        if (!verify(dest, nelems, total_nelems)) {
             return -1.0;
         }
         #endif
