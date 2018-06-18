@@ -5,10 +5,12 @@
 #include "alltoall.h"
 #include <stdlib.h>
 #include <string.h>
-#include "util/run.h"
 #include "util/util.h"
 
-#define VERIFY
+#define CSV
+#include "util/run.h"
+
+#define VERIFYx
 #define PRINTx
 #define WARMUP
 
@@ -28,9 +30,8 @@ int verify(const uint32_t *dst, size_t nelems, size_t total_nelems, int base_npe
         int p = value / (base_nelems * base_npes);
         int m = (value / base_nelems) % base_npes;
 
-
         if (e != e_next || p != p_next || m != me) {
-            gprintf("[%d] dst[%d] = (%d, %d, %d); expected (%d, %d, %d)\n", me, j, e, p, m, e_next, p_next, me);
+            gprintf("[%d] dest[%d] = (%d, %d, %d); expected (%d, %d, %d)\n", me, j, e, p, m, e_next, p_next, me);
             return 0;
         }
 
@@ -53,8 +54,8 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
     int me = shmem_my_pe();
     size_t total_nelems = npes * nelems;
 
-    uint32_t *src = shmem_malloc(total_nelems * sizeof(uint32_t));
-    uint32_t *dst = shmem_malloc(total_nelems * sizeof(uint32_t));
+    uint32_t *source = shmem_malloc(total_nelems * sizeof(uint32_t));
+    uint32_t *dest = shmem_malloc(total_nelems * sizeof(uint32_t));
 
     int base_npes = 10;
     while (base_npes <= npes) base_npes *= 10;
@@ -66,7 +67,7 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
     int idx = 0;
     for (int pe = 0; pe < npes; pe++) {
         for (int e = 0; e < nelems; e++) {
-            src[idx++] = (uint32_t) (e + base_nelems * pe + base_nelems * base_npes * me);
+            source[idx++] = (uint32_t) (e + base_nelems * pe + base_nelems * base_npes * me);
         }
     }
 
@@ -74,13 +75,13 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
     shmem_barrier_all();
 
     for (int i = 0; i < iterations / 10; i++) {
-        memset(dst, 0, total_nelems * sizeof(uint32_t));
+        memset(dest, 0, total_nelems * sizeof(uint32_t));
 
         shmem_barrier_all();
-        alltoall(dst, src, nelems, 0, 0, npes, pSync);
+        alltoall(dest, source, nelems, 0, 0, npes, pSync);
 
-        if (!verify(dst, nelems, total_nelems, base_npes, base_nelems)) {
-            abort();
+        if (!verify(dest, nelems, total_nelems, base_npes, base_nelems)) {
+            return -1.0;
         }
     }
     #endif
@@ -90,12 +91,12 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
 
     for (int i = 0; i < iterations; i++) {
         #if defined(VERIFY) | defined(PRINT)
-        memset(dst, 0, total_nelems * sizeof(uint32_t));
+        memset(dest, 0, total_nelems * sizeof(uint32_t));
         #endif
 
         shmem_barrier_all();
 
-        alltoall(dst, src, nelems, 0, 0, npes, pSync);
+        alltoall(dest, source, nelems, 0, 0, npes, pSync);
 
         #ifdef PRINT
         for (int b = 0; b < npes; b++) {
@@ -104,21 +105,25 @@ double test_alltoall32(alltoall_impl alltoall, int iterations, size_t nelems, lo
                 continue;
             }
 
-            gprintf("%d: %03d", me, dst[0]);
-            for (int j = 1; j < total_nelems; j++) { gprintf(", %03d", dst[j]); }
+            gprintf("%d: %03d", me, dest[0]);
+            for (int j = 1; j < total_nelems; j++) { gprintf(", %03d", dest[j]); }
             gprintf("\n");
         }
         #endif
 
         #ifdef VERIFY
-        if (!verify(dst, nelems, total_nelems, base_npes, base_nelems)) {
-            abort();
+        if (!verify(dest, nelems, total_nelems, base_npes, base_nelems)) {
+            return -1.0;
         }
         #endif
     }
 
     shmem_barrier_all();
     time_ns_t end = current_time_ns();
+
+    shmem_free(pSync);
+    shmem_free(source);
+    shmem_free(dest);
 
     return (end - start) / 1e9;
 }
@@ -146,18 +151,16 @@ int main(int argc, char *argv[]) {
         RUN(alltoall32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_ALLTOALL_SYNC_SIZE);
 
         RUN(alltoall32, shift_exchange_barrier, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUN(alltoall32, shift_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUNC(npes + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE, alltoall32, shift_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+        RUNC(npes <= 96, alltoall32, shift_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+        RUNC(npes - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE, alltoall32, shift_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
 
         RUNC(((npes - 1) & npes) == 0, alltoall32, xor_pairwise_exchange_barrier, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUNC(((npes - 1) & npes) == 0, alltoall32, xor_pairwise_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUNC(((npes - 1) & npes) == 0 && npes + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE, alltoall32, xor_pairwise_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+        RUNC(((npes - 1) & npes) == 0 && npes <= 96, alltoall32, xor_pairwise_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+        RUNC(((npes - 1) & npes) == 0 && npes - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE, alltoall32, xor_pairwise_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
 
         RUN(alltoall32, color_pairwise_exchange_barrier, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUN(alltoall32, color_pairwise_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-        RUN(alltoall32, color_pairwise_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
-
-        RUN(alltoall32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_ALLTOALL_SYNC_SIZE);
+        RUNC(npes <= 96, alltoall32, color_pairwise_exchange_counter, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
+        RUNC(npes - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE, alltoall32, color_pairwise_exchange_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_ALLTOALL_SYNC_SIZE);
 
         if (me == 0) {
             gprintf("\n\n\n\n");

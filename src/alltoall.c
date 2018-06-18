@@ -139,19 +139,19 @@ inline static void alltoall_helper_##_name##_signal(void *dest, const void *sour
 #define SHIFT_PEER(I, ME, NPES) (((ME) + (I)) % (NPES))
 ALLTOALL_HELPER_BARRIER_DEFINITION(shift_exchange, SHIFT_PEER, 1)
 ALLTOALL_HELPER_COUNTER_DEFINITION(shift_exchange, SHIFT_PEER, 1)
-ALLTOALL_HELPER_SIGNAL_DEFINITION(shift_exchange, SHIFT_PEER, PE_size + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
+ALLTOALL_HELPER_SIGNAL_DEFINITION(shift_exchange, SHIFT_PEER, PE_size - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
 
 
 #define XOR_PEER(I, ME, NPES) ((I) ^ (ME))
 ALLTOALL_HELPER_BARRIER_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0)
 ALLTOALL_HELPER_COUNTER_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0)
-ALLTOALL_HELPER_SIGNAL_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0 && PE_size + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
+ALLTOALL_HELPER_SIGNAL_DEFINITION(xor_pairwise_exchange, XOR_PEER, ((PE_size - 1) & PE_size) == 0 && PE_size - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
 
 
 #define COLOR_PEER(I, ME, NPES) edge_color(I, ME, NPES)
 ALLTOALL_HELPER_BARRIER_DEFINITION(color_pairwise_exchange, COLOR_PEER, 1)
 ALLTOALL_HELPER_COUNTER_DEFINITION(color_pairwise_exchange, COLOR_PEER, 1)
-ALLTOALL_HELPER_SIGNAL_DEFINITION(color_pairwise_exchange, COLOR_PEER, PE_size + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
+ALLTOALL_HELPER_SIGNAL_DEFINITION(color_pairwise_exchange, COLOR_PEER, PE_size - 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
 
 // @formatter:on
 
