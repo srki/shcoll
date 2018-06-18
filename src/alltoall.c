@@ -118,7 +118,7 @@ inline static void alltoall_helper_##_name##_signal(void *dest, const void *sour
     int peer_as;                                                                                                    \
                                                                                                                     \
     for (i = 1; i < PE_size; i++) {                                                                                 \
-        peer_as = (me_as + i) % PE_size;                                                                            \
+        peer_as = _peer(i, me, PE_size);                                                                            \
         source_ptr = ((uint8_t *) source) + peer_as * nelems;                                                       \
                                                                                                                     \
         shmem_putmem_signal_nb(dest_ptr, source_ptr, nelems, pSync + i - 1, SHCOLL_SYNC_VALUE + 1,                  \
@@ -153,14 +153,15 @@ ALLTOALL_HELPER_BARRIER_DEFINITION(color_pairwise_exchange, COLOR_PEER, 1)
 ALLTOALL_HELPER_COUNTER_DEFINITION(color_pairwise_exchange, COLOR_PEER, 1)
 ALLTOALL_HELPER_SIGNAL_DEFINITION(color_pairwise_exchange, COLOR_PEER, PE_size + 1 <= SHCOLL_ALLTOALL_SYNC_SIZE)
 
-// @formatter:off
+// @formatter:on
 
-#define SHCOLL_ALLTOALL_DEFINITION(_name, _size)                                                        \
-    void shcoll_alltoall##_size##_##_name(void *dest, const void *source, size_t nelems, int PE_start,  \
-                                       int logPE_stride, int PE_size, long *pSync) {                    \
-        alltoall_helper_##_name(dest, source, (_size) / (CHAR_BIT) * nelems,                            \
-                                PE_start, logPE_stride, PE_size, pSync);                                \
-}                                                                                                       \
+
+#define SHCOLL_ALLTOALL_DEFINITION(_name, _size)                                                                    \
+    void shcoll_alltoall##_size##_##_name(void *dest, const void *source, size_t nelems, int PE_start,              \
+                                          int logPE_stride, int PE_size, long *pSync) {                             \
+        alltoall_helper_##_name(dest, source, (_size) / (CHAR_BIT) * nelems,                                        \
+                                PE_start, logPE_stride, PE_size, pSync);                                            \
+}                                                                                                                   \
 
 
 // @formatter:off
