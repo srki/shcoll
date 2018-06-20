@@ -17,6 +17,28 @@ static inline void shcoll_broadcast32_shmem(void *dest, const void *source, size
     shmem_broadcast32(dest, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync);
 }
 
+int verify(const uint32_t *dest, size_t nelem, int root) {
+    const int me = shmem_my_pe();
+
+    if (me != root) {
+        for (int j = 0; j < nelem; ++j) {
+            if (dest[j] != j + 1) {
+                gprintf("[%d] dst[%d] = %u; expected: %u\n", me, j, dest[j], j + 1);
+                abort();
+            }
+        }
+    } else {
+        for (int j = 0; j < nelem; ++j) {
+            if (dest[j] != 0) {
+                gprintf("[%d] dst[%d] = %u; expected: %u\n", me, j, dest[j], 0);
+                abort();
+            }
+        }
+    }
+
+    return 1;
+}
+
 double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, long SYNC_VALUE, size_t BCAST_SYNC_CAST) {
     long *pSync = shmem_malloc(BCAST_SYNC_CAST * sizeof(long));
     for (int i = 0; i < BCAST_SYNC_CAST; i++) {
@@ -27,35 +49,41 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
     int npes = shmem_n_pes();
     int me = shmem_my_pe();
 
-    uint32_t *dst = shmem_calloc(count, sizeof(uint32_t));
-    uint32_t *src = shmem_calloc(count, sizeof(uint32_t));
+    uint32_t *dest = shmem_calloc(count, sizeof(uint32_t));
+    uint32_t *source = shmem_calloc(count, sizeof(uint32_t));
 
     for (int i = 0; i < count; i++) {
-        src[i] = (uint32_t) i + 1;
+        source[i] = (uint32_t) i + 1;
     }
 
     #ifdef WARMUP
     shmem_barrier_all();
 
     for (int i = 0; i < iterations / 10; i++) {
+        memset(dest, 0, count * sizeof(uint32_t));
+
         int root = i % npes;
         shmem_barrier_all();
-        broadcast(dst, src, count, root, 0, 0, npes, pSync);
+        broadcast(dest, source, count, root, 0, 0, npes, pSync);
+
+        if (!verify(dest, count, root)) {
+            return -1.0;
+        }
     }
     #endif
 
     shmem_barrier_all();
-    unsigned long long start = current_time_ns();
+    time_ns_t start = current_time_ns();
 
     for (int i = 0; i < iterations; i++) {
-        #ifdef VERIFY
-        memset(dst, 0, count * sizeof(uint32_t));
+        #if defined(VERIFY) || defined(PRINT)
+        memset(dest, 0, count * sizeof(uint32_t));
         #endif
 
         shmem_barrier_all();
 
         int root = i % npes;
-        broadcast(dst, src, count, root, 0, 0, npes, pSync);
+        broadcast(dest, source, count, root, 0, 0, npes, pSync);
         #ifdef PRINT
         shmem_barrier_all();
 
@@ -66,29 +94,24 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
             }
 
             gprintf("%d: ", me);
-            for (int j = 0; j < count; ++j) { gprintf("%u ", dst[j]); }
+            for (int j = 0; j < count; ++j) { gprintf("%u ", dest[j]); }
             gprintf("\n");
         }
         #endif
 
         #ifdef VERIFY
-        if (me != root) {
-            for (int j = 0; j < count; ++j) {
-                if (dst[j] != j + 1) {
-                    gprintf("[%d] dst[%d] = %u; expected: %u\n", me, j, dst[j], j + 1);
-                    abort();
-                }
-            }
+        if (!verify(dest, count, root)) {
+            return -1.0;
         }
         #endif
     }
 
-    unsigned long long end = current_time_ns();
+    time_ns_t end = current_time_ns();
 
     shmem_barrier_all();
     shmem_free(pSync);
-    shmem_free(dst);
-    shmem_free(src);
+    shmem_free(dest);
+    shmem_free(source);
     shmem_barrier_all();
 
     return (end - start) / 1e9;
@@ -96,25 +119,50 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
 
 
 int main(int argc, char *argv[]) {
-    int iterations = (int) (argc > 1 ? strtol(argv[1], NULL, 0) : 1);
-    size_t count = (size_t) (argc > 2 ? strtol(argv[2], NULL, 0) : 1);
+    int iterations;
+    size_t count;
 
+    time_ns_t start = current_time_ns();
     shmem_init();
+    time_ns_t end = current_time_ns();
+
     int me = shmem_my_pe();
     int npes = shmem_n_pes();
 
-    if (shmem_my_pe() == 0) {
-        gprintf("PEs: %d; iterations: %d; size: %zu\n", npes, iterations, count);
+    if (me == 0) {
+        gprintf("%s PEs: %d; shmem_init: %lf\n", __FILE__, npes, (end - start) / 1e9);
     }
 
-    RUN(broadcast32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_BCAST_SYNC_SIZE);
-    RUNC(npes <= 2 * 24, broadcast32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
-    RUNC(count > 16384, broadcast32, scatter_collect, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
-    RUN(broadcast32, binomial_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
-    for (int degree = 2; degree <= 4; degree *= 2) {
-        shcoll_set_broadcast_tree_degree(degree);
-        RUNC(count <= 262144, broadcast32, complete_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+    // @formatter:off
+
+    for (int i = 1; i < argc; i++) {
+        sscanf(argv[i], "%d:%zu", &iterations, &count);
+
+        RUN(broadcast32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_BCAST_SYNC_SIZE);
+        RUNC(npes <= 2 * 24, broadcast32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        RUNC(count > 16384, broadcast32, scatter_collect, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        RUN(broadcast32, binomial_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+
+        for (int radix = 2; radix <= 32; radix *= 2) {
+            shcoll_set_broadcast_knomial_tree_radix_barrier(radix);
+            if (me == 0) gprintf("%2d-", radix);
+            RUNC(count <= 262144, broadcast32, knomial_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        }
+
+        for (int radix = 2; radix <= 32; radix *= 2) {
+            shcoll_set_broadcast_knomial_tree_radix_barrier(radix);
+            if (me == 0) gprintf("%2d-", radix);
+            RUNC(count <= 262144, broadcast32, knomial_tree_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        }
+
+        for (int degree = 2; degree <= 32; degree *= 2) {
+            shcoll_set_broadcast_tree_degree(degree);
+            if (me == 0) gprintf("%2d-", degree);
+            RUNC(count <= 262144, broadcast32, complete_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        }
     }
+
+    // @formatter:on
 
     shmem_finalize();
 }

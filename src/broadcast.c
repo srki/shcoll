@@ -4,9 +4,14 @@
 #include "barrier.h"
 
 static int tree_degree_broadcast = 2;
+static int knomial_tree_radix_barrier = 2;
 
 void shcoll_set_broadcast_tree_degree(int tree_degree) {
     tree_degree_broadcast = tree_degree;
+}
+
+void shcoll_set_broadcast_knomial_tree_radix_barrier(int tree_radix) {
+    knomial_tree_radix_barrier = tree_radix;
 }
 
 
@@ -102,6 +107,108 @@ inline static void broadcast_helper_binomial_tree(void *target, const void *sour
             shmem_putmem_nbi(target, source, nbytes, dst);
             shmem_fence();
             shmem_long_atomic_inc(pSync, dst);
+        }
+
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == PE_root ? 0 : 1));
+    }
+
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+}
+
+inline static void broadcast_helper_knomial_tree(void *target, const void *source, size_t nbytes, int PE_root,
+                                                 int PE_start, int logPE_stride, int PE_size, long *pSync) {
+    const int me = shmem_my_pe();
+    const int stride = 1 << logPE_stride;
+
+    int i, j;
+    int parent;
+    int child_offset;
+    int dst_pe;
+    node_info_knomial_t node;
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+
+    /* Get information about children */
+    get_node_info_knomial_root(PE_size, PE_root, knomial_tree_radix_barrier, me_as, &node);
+
+    /* Wait for the data form the parent */
+    if (me_as != PE_root) {
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        source = target;
+
+        /* Send ack */
+        parent = node.parent;
+        shmem_long_atomic_inc(pSync, PE_start + parent * stride);
+    }
+
+    /* Send data to children */
+    if (node.children_num != 0) {
+        child_offset = 0;
+
+        for (i = 0; i < node.groups_num; i++) {
+            for (j = 0; j < node.groups_sizes[i]; j++) {
+                dst_pe = PE_start + node.children[child_offset + j] * stride;
+                shmem_putmem_nbi(target, source, nbytes, dst_pe);
+            }
+
+            shmem_fence();
+
+            for (j = 0; j < node.groups_sizes[i]; j++) {
+                dst_pe = PE_start + node.children[child_offset + j] * stride;
+                shmem_long_atomic_inc(pSync, dst_pe);
+            }
+
+            child_offset += node.groups_sizes[i];
+        }
+
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == PE_root ? 0 : 1));
+    }
+
+    shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
+}
+
+inline static void broadcast_helper_knomial_tree_signal(void *target, const void *source, size_t nbytes, int PE_root,
+                                                        int PE_start, int logPE_stride, int PE_size, long *pSync) {
+    const int me = shmem_my_pe();
+    const int stride = 1 << logPE_stride;
+
+    int i, j;
+    int parent;
+    int child_offset;
+    int dest_pe;
+    node_info_knomial_t node;
+
+    /* Get my index in the active set */
+    int me_as = (me - PE_start) / stride;
+
+    /* Get information about children */
+    get_node_info_knomial_root(PE_size, PE_root, knomial_tree_radix_barrier, me_as, &node);
+
+    /* Wait for the data form the parent */
+    if (me_as != PE_root) {
+        shmem_long_wait_until(pSync, SHMEM_CMP_NE, SHCOLL_SYNC_VALUE);
+        source = target;
+
+        /* Send ack */
+        parent = node.parent;
+        shmem_long_atomic_inc(pSync, PE_start + parent * stride);
+    }
+
+    /* Send data to children */
+    if (node.children_num != 0) {
+        child_offset = 0;
+
+        for (i = 0; i < node.groups_num; i++) {
+            for (j = 0; j < node.groups_sizes[i]; j++) {
+                dest_pe = PE_start + node.children[child_offset + j] * stride;
+
+                shmem_putmem_nbi(target, source, nbytes, dest_pe);
+                shmem_putmem_signal_nb(target, source, nbytes, (uint64_t *) pSync,
+                                       SHCOLL_SYNC_VALUE + 1, dest_pe, NULL);
+            }
+
+            child_offset += node.groups_sizes[i];
         }
 
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + node.children_num + (me_as == PE_root ? 0 : 1));
@@ -249,6 +356,16 @@ SHCOLL_BROADCAST_DEFINITION(binomial_tree, 8)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, 16)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, 32)
 SHCOLL_BROADCAST_DEFINITION(binomial_tree, 64)
+
+SHCOLL_BROADCAST_DEFINITION(knomial_tree, 8)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree, 16)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree, 32)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree, 64)
+
+SHCOLL_BROADCAST_DEFINITION(knomial_tree_signal, 8)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree_signal, 16)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree_signal, 32)
+SHCOLL_BROADCAST_DEFINITION(knomial_tree_signal, 64)
 
 SHCOLL_BROADCAST_DEFINITION(scatter_collect, 8)
 SHCOLL_BROADCAST_DEFINITION(scatter_collect, 16)
