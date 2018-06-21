@@ -35,12 +35,15 @@
     #define RUN(_func, _name, ...)                                                                  \
         do {                                                                                        \
             if (shmem_my_pe() == 0) {                                                               \
-                gprintf(#_name ": %lf\n", test_##_func(shcoll_##_func##_##_name, __VA_ARGS__));     \
-            } else {                                                                                \
-                test_##_func(shcoll_##_func##_##_name, __VA_ARGS__);                                \
+                gprintf(#_name ": ");                                                               \
+            }                                                                                       \
+                                                                                                    \
+            double t = test_##_func(shcoll_##_func##_##_name, __VA_ARGS__);                         \
+                                                                                                    \
+            if (shmem_my_pe() == 0) {                                                               \
+                gprintf("%lf\n", t);                                                                \
             }                                                                                       \
         } while (0)                                                                                 \
-
 
     #define RUNC(_cond, _func, _name, ...)                                                          \
         do {                                                                                        \

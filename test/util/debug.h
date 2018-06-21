@@ -8,7 +8,9 @@
 #include "stdio.h"
 #include <assert.h>
 
-#define gprintf(...) fprintf(stderr, __VA_ARGS__)
+#define OUTPUT_STREAM stderr
+
+#define gprintf(...) do { fprintf(OUTPUT_STREAM, __VA_ARGS__); fflush(OUTPUT_STREAM); } while(0);
 #define PL gprintf("[%d]:%d\n", shmem_my_pe(), __LINE__);
 #define PLI(A) gprintf("[%d]:%d %d\n", shmem_my_pe(), __LINE__, (A));
 #define PLP(P) gprintf("[%d]:%d %p\n", shmem_my_pe(), __LINE__, (P));
