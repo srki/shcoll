@@ -203,7 +203,6 @@ inline static void broadcast_helper_knomial_tree_signal(void *target, const void
             for (j = 0; j < node.groups_sizes[i]; j++) {
                 dest_pe = PE_start + node.children[child_offset + j] * stride;
 
-                shmem_putmem_nbi(target, source, nbytes, dest_pe);
                 shmem_putmem_signal_nb(target, source, nbytes, (uint64_t *) pSync,
                                        SHCOLL_SYNC_VALUE + 1, dest_pe, NULL);
             }
