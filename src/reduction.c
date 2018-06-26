@@ -372,6 +372,7 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
             shmem_getmem(tmp_array, dest + block_offset, block_nelems * sizeof(_type), xchg_peer_pe);           \
                                                                                                                 \
             /* Notify the peer PE that the data transfer has completed successfully */                          \
+            shmem_fence();                                                                                      \
             shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 2, xchg_peer_pe);                                       \
                                                                                                                 \
             /* Do local reduce */                                                                               \
@@ -566,6 +567,7 @@ void shcoll_##_name##_to_all_rabenseifner2(_type *dest, const _type *source, int
             shmem_getmem(tmp_array, dest + block_offset, block_nelems * sizeof(_type), xchg_peer_pe);               \
                                                                                                                     \
             /* Notify the peer PE that the data transfer has completed successfully */                              \
+            shmem_fence();                                                                                          \
             shmem_long_p(pSync + i, SHCOLL_SYNC_VALUE + 2, xchg_peer_pe);                                           \
                                                                                                                     \
             /* Do local reduce */                                                                                   \
