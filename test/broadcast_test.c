@@ -1,9 +1,10 @@
 #include "broadcast.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "util/util.h"
 #include "util/debug.h"
+
+#define CSV
 #include "util/run.h"
 
 #define VERIFYx
@@ -24,14 +25,14 @@ int verify(const uint32_t *dest, size_t nelem, int root) {
         for (int j = 0; j < nelem; ++j) {
             if (dest[j] != j + 1) {
                 gprintf("[%d] dst[%d] = %u; expected: %u\n", me, j, dest[j], j + 1);
-                abort();
+                return 0;
             }
         }
     } else {
         for (int j = 0; j < nelem; ++j) {
             if (dest[j] != 0) {
                 gprintf("[%d] dst[%d] = %u; expected: %u\n", me, j, dest[j], 0);
-                abort();
+                return 0;
             }
         }
     }
@@ -62,11 +63,10 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
     for (int i = 0; i < iterations / 10; i++) {
         memset(dest, 0, count * sizeof(uint32_t));
 
-        int root = i % npes;
         shmem_barrier_all();
-        broadcast(dest, source, count, root, 0, 0, npes, pSync);
+        broadcast(dest, source, count, 0, 0, 0, npes, pSync);
 
-        if (!verify(dest, count, root)) {
+        if (!verify(dest, count, 0)) {
             return -1.0;
         }
     }
@@ -81,9 +81,8 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
         #endif
 
         shmem_barrier_all();
+        broadcast(dest, source, count, 0, 0, 0, npes, pSync);
 
-        int root = i % npes;
-        broadcast(dest, source, count, root, 0, 0, npes, pSync);
         #ifdef PRINT
         shmem_barrier_all();
 
@@ -100,12 +99,13 @@ double test_broadcast32(broadcast_impl broadcast, int iterations, size_t count, 
         #endif
 
         #ifdef VERIFY
-        if (!verify(dest, count, root)) {
+        if (!verify(dest, count, 0)) {
             return -1.0;
         }
         #endif
     }
 
+    shmem_barrier_all();
     time_ns_t end = current_time_ns();
 
     shmem_barrier_all();
@@ -139,8 +139,9 @@ int main(int argc, char *argv[]) {
         sscanf(argv[i], "%d:%zu", &iterations, &count);
 
         RUN(broadcast32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_BCAST_SYNC_SIZE);
+        if (me == 0) gprintf("\n");
         RUNC(npes <= 2 * 24, broadcast32, linear, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
-        RUNC(count > 16384, broadcast32, scatter_collect, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        RUNC(count >= 4194304, broadcast32, scatter_collect, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
         RUN(broadcast32, binomial_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
 
         for (int radix = 2; radix <= 32; radix *= 2) {
@@ -152,13 +153,17 @@ int main(int argc, char *argv[]) {
         for (int radix = 2; radix <= 32; radix *= 2) {
             shcoll_set_broadcast_knomial_tree_radix_barrier(radix);
             if (me == 0) gprintf("%2d-", radix);
-            RUNC(count <= 262144, broadcast32, knomial_tree_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+            RUNC(count <= 256, broadcast32, knomial_tree_signal, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
         }
 
         for (int degree = 2; degree <= 32; degree *= 2) {
             shcoll_set_broadcast_tree_degree(degree);
             if (me == 0) gprintf("%2d-", degree);
-            RUNC(count <= 262144, broadcast32, complete_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+            RUNC(count <= 2048, broadcast32, complete_tree, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_BCAST_SYNC_SIZE);
+        }
+
+        if (me == 0) {
+            gprintf("\n\n\n\n");
         }
     }
 
