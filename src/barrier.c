@@ -173,13 +173,12 @@ inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stri
 inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_stride, int PE_size, long *pSync) {
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
-
     /* Calculate my index in the active set */
     const int me_as = (me - PE_start) / stride;
-
     int round;
     int distance;
     int target_as;
+    long unused;
 
     for (round = 0, distance = 1; distance < PE_size; round++, distance <<= 1) {
         target_as = (me_as + distance) % PE_size;
@@ -192,7 +191,7 @@ inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_str
 
         /* Reset pSync element, fadd is used instead of add because we have to
            be sure that reset happens before next invocation of barrier */
-        long unused = shmem_long_atomic_fetch_add(&pSync[round], -1, me);
+        unused = shmem_long_atomic_fetch_add(&pSync[round], -1, me);
     }
 }
 
