@@ -3,7 +3,7 @@
 
 #include <shmem.h>
 
-#if SHMEM_MAJOR_VERSION == 1 && SHMEM_MINOR_VERSION == 3
+#if SHMEM_MAJOR_VERSION == 1 && SHMEM_MINOR_VERSION < 4
 
 #define shmem_sync_all shmem_barrier_all
 #define shmem_long_atomic_inc shmem_long_inc
