@@ -1,4 +1,4 @@
-#include "barrier.h"
+#include "shcoll.h"
 #include "util/trees.h"
 
 static int tree_degree_barrier = 2;

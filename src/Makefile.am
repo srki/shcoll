@@ -9,6 +9,11 @@ SOURCES                 = alltoall.c \
 				collect.c \
 				fcollect.c \
 				reduction.c
+SOURCES                += util/bithacks.c \
+				util/broadcast-size.c \
+				util/rotate.c \
+				util/scan.c \
+				util/trees.c
 
 lib_LTLIBRARIES         = libshcoll.la
 libshcoll_la_SOURCES    = $(SOURCES)

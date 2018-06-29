@@ -1,11 +1,10 @@
-#include "reduction.h"
+#include "shcoll.h"
+#include "util/bithacks.h"
+#include "../test/util/debug.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "util/bithacks.h"
-#include "broadcast.h"
-#include "barrier.h"
-#include "../test/util/debug.h"
 
 /*
  * Local reduce helper

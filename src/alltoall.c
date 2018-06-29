@@ -2,8 +2,8 @@
 // Created by Srdan Milakovic on 5/21/18.
 //
 
-#include "alltoall.h"
-#include "barrier.h"
+#include "shcoll.h"
+
 #include <string.h>
 #include <limits.h>
 #include <assert.h>

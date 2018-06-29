@@ -2,11 +2,10 @@
 // Created by Srdan Milakovic on 5/17/18.
 //
 
-#include "fcollect.h"
-#include "barrier.h"
-#include "broadcast.h"
+#include "shcoll.h"
 #include "../test/util/debug.h"
 #include "util/rotate.h"
+
 #include <limits.h>
 #include <string.h>
 #include <assert.h>

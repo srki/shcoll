@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include "broadcast.h"
+#include "shcoll.h"
 #include "util/trees.h"
-#include "barrier.h"
+
+#include <stdio.h>
 
 static int tree_degree_broadcast = 2;
 static int knomial_tree_radix_barrier = 2;

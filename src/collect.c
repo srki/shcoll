@@ -2,15 +2,14 @@
 // Created by Srdan Milakovic on 5/15/18.
 //
 
-#include "collect.h"
-#include <string.h>
-#include <limits.h>
+#include "shcoll.h"
 #include "util/rotate.h"
 #include "util/scan.h"
 #include "util/broadcast-size.h"
-#include "barrier.h"
-#include "broadcast.h"
 #include "../test/util/run.h"
+
+#include <string.h>
+#include <limits.h>
 
 inline static void collect_helper_linear(void *dest, const void *source, size_t nbytes, int PE_start,
                                          int logPE_stride, int PE_size, long *pSync) {
