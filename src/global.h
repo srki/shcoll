@@ -6,7 +6,7 @@
 #define OPENSHMEM_COLLECTIVE_ROUTINES_GLOBAL_H
 
 #include <shmem.h>
-#include "util/wraper.h"
+#include "util/wrapper.h"
 
 #define SHCOLL_BCAST_SYNC_SIZE 2
 
