@@ -1,5 +1,5 @@
 #include "trees.h"
-#include "../../test/util/run.h"
+#include "../../tests/util/run.h"
 
 
 void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_info) {

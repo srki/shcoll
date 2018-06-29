@@ -3,7 +3,7 @@
 //
 
 #include "shcoll.h"
-#include "../test/util/debug.h"
+#include "../tests/util/debug.h"
 #include "util/rotate.h"
 
 #include <limits.h>

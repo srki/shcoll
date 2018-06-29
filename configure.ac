@@ -45,9 +45,12 @@ AC_CHECK_TYPES([ptrdiff_t])
 
 AM_INIT_AUTOMAKE
 
+AC_CONFIG_TESTDIR([tests])
+
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
+	tests/atlocal
         ])
 
 AC_OUTPUT

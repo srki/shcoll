@@ -1,6 +1,6 @@
 #include "shcoll.h"
 #include "util/bithacks.h"
-#include "../test/util/debug.h"
+#include "../tests/util/debug.h"
 
 #include <string.h>
 #include <stdlib.h>
