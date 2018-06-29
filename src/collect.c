@@ -6,10 +6,10 @@
 #include "util/rotate.h"
 #include "util/scan.h"
 #include "util/broadcast-size.h"
-#include "../test/util/run.h"
 
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 inline static void collect_helper_linear(void *dest, const void *source, size_t nbytes, int PE_start,
                                          int logPE_stride, int PE_size, long *pSync) {
