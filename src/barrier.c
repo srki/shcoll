@@ -192,7 +192,7 @@ inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_str
 
         /* Reset pSync element, fadd is used instead of add because we have to
            be sure that reset happens before next invocation of barrier */
-        shmem_long_atomic_fetch_add(&pSync[round], -1, me);
+        long unused = shmem_long_atomic_fetch_add(&pSync[round], -1, me);
     }
 }
 
