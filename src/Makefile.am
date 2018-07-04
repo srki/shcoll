@@ -22,4 +22,14 @@ libshcoll_la_CFLAGS     = $(AM_CFLAGS)
 lib_LIBRARIES           = libshcoll.a
 libshcoll_a_SOURCES     = $(SOURCES)
 
-nobase_include_HEADERS  = shcoll.h shcoll/compat.h
+nobase_include_HEADERS  = shcoll.h \
+				shcoll/alltoall.h \
+				shcoll/alltoalls.h \
+				shcoll/barrier.h \
+				shcoll/broadcast.h \
+				shcoll/collect.h \
+				shcoll/common.h \
+				shcoll/compat.h \
+				shcoll/fcollect.h \
+				shcoll/reduction.h
+
