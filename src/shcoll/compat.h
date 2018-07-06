@@ -53,7 +53,7 @@ static void shmem_putmem_signal_nb(void *dest,
                                                size_t nelems,       \
                                                int pe)              \
     {                                                               \
-        int i;                                                      \
+        size_t i;                                                   \
         uint##_size##_t *dest_ptr =  (uint##_size##_t *) dest;      \
         const uint##_size##_t *source_ptr =                         \
             (const uint##_size##_t *) source;                       \
