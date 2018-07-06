@@ -82,7 +82,7 @@ void shcoll_##_name##_to_all_binomial(_type *dest, const _type *source, int nred
     tmp_array = malloc(nbytes);                                                                             \
     if (!tmp_array) {                                                                                       \
         /* TODO: raise error */                                                                             \
-        fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                   \
+        fprintf(stderr, "PE %d: Cannot allocate memory!\n", me);          \
         exit(-1);                                                                                           \
     }                                                                                                       \
                                                                                                             \
@@ -173,7 +173,7 @@ void shcoll_##_name##_to_all_rec_dbl(_type *dest, const _type *source, int nredu
         tmp_array = malloc(nreduce * sizeof(_type));                                                        \
         if (tmp_array == NULL) {                                                                            \
             /* TODO: raise error */                                                                         \
-            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                               \
+            fprintf(stderr, "PE %d: Cannot allocate memory!\n", me);                               \
             exit(-1);                                                                                       \
         }                                                                                                   \
     }                                                                                                       \
@@ -292,7 +292,7 @@ void shcoll_##_name##_to_all_rabenseifner(_type *dest, const _type *source, int 
         tmp_array = malloc((nelems / 2 + 1) * sizeof(_type));                                                   \
         if (tmp_array == NULL) {                                                                                \
             /* TODO: raise error */                                                                             \
-            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                   \
+            fprintf(stderr, "PE %d: Cannot allocate memory!\n", me);                                   \
             exit(-1);                                                                                           \
         }                                                                                                       \
     }                                                                                                           \
@@ -487,7 +487,7 @@ void shcoll_##_name##_to_all_rabenseifner2(_type *dest, const _type *source, int
         tmp_array = malloc((nelems / 2 + 1) * sizeof(_type));                                                       \
         if (tmp_array == NULL) {                                                                                    \
             /* TODO: raise error */                                                                                 \
-            fprintf(stderr, "PE %d: Cannot allocate memory!", shmem_my_pe());                                       \
+            fprintf(stderr, "PE %d: Cannot allocate memory!\n", me);                                       \
             exit(-1);                                                                                               \
         }                                                                                                           \
     }                                                                                                               \
