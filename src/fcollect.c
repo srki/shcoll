@@ -3,6 +3,7 @@
 //
 
 #include "shcoll.h"
+#include "shcoll/compat.h"
 #include "../tests/util/debug.h"
 #include "util/rotate.h"
 

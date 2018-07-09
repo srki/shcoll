@@ -3,6 +3,7 @@
 //
 
 #include "shcoll.h"
+#include "shcoll/compat.h"
 #include "util/rotate.h"
 #include "util/scan.h"
 #include "util/broadcast-size.h"

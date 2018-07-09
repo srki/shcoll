@@ -1,4 +1,5 @@
 #include "shcoll.h"
+#include "shcoll/compat.h"
 #include "util/trees.h"
 
 #include <stdio.h>
@@ -334,9 +335,9 @@ inline static void broadcast_helper_scatter_collect(void *target, const void *so
 #define SHCOLL_BROADCAST_DEFINITION(_name, _size)                                           \
     void shcoll_broadcast##_size##_##_name(void *dest, const void *source,                  \
                                            size_t nelems, int PE_root, int PE_start,        \
-                                           int logPE_stride, int PE_size, long *pSync) {    \
+                                           int logPE_stride, int PE_size, long *pSync) { \
         broadcast_helper_##_name(dest, source, (_size) / CHAR_BIT * nelems,                 \
-                PE_root, PE_start, logPE_stride, PE_size, pSync);                           \
+                                 PE_root, PE_start, logPE_stride, PE_size, pSync); \
     }                                                                                       \
 
 /* @formatter:off */

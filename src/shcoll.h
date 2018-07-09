@@ -4,7 +4,7 @@
 #include <shmem.h>
 
 #include <shcoll/common.h>
-#include <shcoll/compat.h>
+// #include <shcoll/compat.h>
 
 #include <shcoll/alltoall.h>
 #include <shcoll/alltoalls.h>

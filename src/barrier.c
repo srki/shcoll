@@ -195,33 +195,28 @@ inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_str
     }
 }
 
-
-static long barrier_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
-static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
-
-
-#define SHCOLL_BARRIER_SYNC_DEFINITION(_name)                                   \
-    void shcoll_barrier_##_name(int PE_start, int logPE_stride,                 \
-                                int PE_size, long *pSync) {                     \
-        shmem_quiet();                                                          \
-        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_barrier_all_##_name() {                                         \
-        shmem_quiet();                                                          \
-        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), barrier_all_pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_sync_##_name(int PE_start, int logPE_stride,                    \
-                             int PE_size, long *pSync) {                        \
-        /* TODO: memory fence */                                                \
-        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_sync_all_##_name() {                                            \
-        /* TODO: memory fence */                                                \
-        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), sync_all_pSync);       \
-    }                                                                           \
+#define SHCOLL_BARRIER_SYNC_DEFINITION(_name)                           \
+    void shcoll_barrier_##_name(int PE_start, int logPE_stride,         \
+                                int PE_size, long *pSync) {   \
+        shmem_quiet();                                                  \
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync); \
+    }                                                                   \
+                                                                        \
+    void shcoll_barrier_all_##_name(long *pSync) {          \
+        shmem_quiet();                                                  \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), pSync); \
+    }                                                                   \
+                                                                        \
+    void shcoll_sync_##_name(int PE_start, int logPE_stride,            \
+                             int PE_size, long *pSync) {      \
+        /* TODO: memory fence */                                        \
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync); \
+    }                                                                   \
+                                                                        \
+    void shcoll_sync_all_##_name(long *pSync) {             \
+        /* TODO: memory fence */                                        \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), pSync); \
+    }                                                                   \
 
 /* @formatter:off */
 
