@@ -9,7 +9,7 @@ AC_INIT([SHCOLL], [1.0], [somewhere], [], [somewhere])
 AC_CONFIG_SRCDIR([autogen.sh])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([subdir-objects tar-pax])
 
 AM_SILENT_RULES([yes])
 
@@ -25,7 +25,7 @@ AM_PROG_CC_C_O
 # for building shared libraries
 LT_INIT
 
-AC_CHECK_HEADERS([stdlib.h unistd.h string.h time.h sys/time.h sys/utsname.h sys/types.h fcntl.h stddef.h sys/param.h assert.h stdarg.h stdbool.h sched.h])
+AC_CHECK_HEADERS([stdlib.h unistd.h string.h time.h sys/time.h sys/types.h stddef.h sys/param.h assert.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
