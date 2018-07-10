@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
         RUN(fcollect32, shmem, iterations, count, SHMEM_SYNC_VALUE, SHMEM_COLLECT_SYNC_SIZE);
 
         RUNC(count >= 256, fcollect32, ring, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
-        RUNC(npes % 2 == 0 && count >= 32, fcollect32, neighbour_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
+        RUNC(npes % 2 == 0 && count >= 32, fcollect32, neighbor_exchange, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
         RUNC(!((npes - 1) & npes), fcollect32, rec_dbl, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
 
         RUNC(count <= 256, fcollect32, bruck, iterations, count, SHCOLL_SYNC_VALUE, SHCOLL_COLLECT_SYNC_SIZE);
