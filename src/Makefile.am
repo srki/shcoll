@@ -29,6 +29,7 @@ nobase_include_HEADERS  = shcoll.h \
 				shcoll/broadcast.h \
 				shcoll/collect.h \
 				shcoll/common.h \
-				shcoll/compat.h \
 				shcoll/fcollect.h \
 				shcoll/reduction.h
+
+EXTRA_DIST              = shcoll/compat.h
