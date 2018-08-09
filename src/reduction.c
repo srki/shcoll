@@ -88,7 +88,6 @@
         int target_as;                                                  \
         size_t nbytes = sizeof(_type) * nreduce;                        \
         _type *tmp_array = NULL;                                        \
-        int i;                                                          \
         unsigned mask = 0x1;                                            \
         long old_pSync = SHCOLL_SYNC_VALUE;                             \
         long to_receive = 0;                                            \
@@ -172,7 +171,6 @@
         /* Get my index in the active set */                            \
         int me_as = (me - PE_start) / stride;                           \
         int mask;                                                       \
-        int i, j;                                                       \
                                                                         \
         int xchg_peer_p2s;                                              \
         int xchg_peer_as;                                               \
@@ -224,6 +222,8 @@
                                                                         \
         /* If the current PE belongs to the power 2 set, do recursive doubling */ \
         if (me_p2s != -1) {                                             \
+            int i;                                                      \
+                                                                        \
             for (mask = 0x1, i = 1; mask < p2s_size; mask <<= 1, i++) { \
                 xchg_peer_p2s = me_p2s ^ mask;                          \
                 xchg_peer_as = (xchg_peer_p2s * PE_size + p2s_size - 1) / p2s_size; \

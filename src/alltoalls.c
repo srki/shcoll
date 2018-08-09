@@ -37,8 +37,8 @@ inline static int edge_color(int i, int me, int npes) {
         const int stride = 1 << logPE_stride;                           \
         const int me = shmem_my_pe();                                   \
                                                                         \
-            /* Get my index in the active set */                        \
-            const int me_as = (me - PE_start) / stride;                 \
+        /* Get my index in the active set */                            \
+        /* const int me_as = (me - PE_start) / stride; */               \
                                                                         \
         void *const dest_ptr = ((uint8_t *) dest) + me * dst * nelems * ((_size) / CHAR_BIT); \
         void const *source_ptr = ((uint8_t *) source) + me * sst * nelems * ((_size) / CHAR_BIT); \

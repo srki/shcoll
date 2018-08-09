@@ -2,9 +2,11 @@
 #include "../../tests/util/run.h"
 
 
-void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_info) {
+void
+get_node_info_binomial(int tree_size, int node,
+                       node_info_binomial_t *node_info)
+{
     int mask;
-    int child;
 
     node_info->parent = node == 0 ? -1 : node & (node - 1);
 
@@ -19,7 +21,8 @@ void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_
     node_info->children_num = 0;
 
     while (mask != 0) {
-        child = node | mask;
+        const int child = node | mask;
+
         if (child < tree_size) {
             node_info->children[node_info->children_num++] = child;
         }
@@ -28,10 +31,12 @@ void get_node_info_binomial(int tree_size, int node, node_info_binomial_t *node_
     }
 }
 
-void get_node_info_binomial_root(int tree_size, int root, int node, node_info_binomial_t *node_info) {
+void
+get_node_info_binomial_root(int tree_size, int root, int node,
+                            node_info_binomial_t *node_info)
+{
     int mask;
     int parent;
-    int child;
 
     node = root <= node ? node - root : node - root + tree_size;
 
@@ -53,7 +58,8 @@ void get_node_info_binomial_root(int tree_size, int root, int node, node_info_bi
     node_info->children_num = 0;
 
     while (mask != 0) {
-        child = node | mask;
+        const int child = node | mask;
+
         if (child < tree_size) {
             node_info->children[node_info->children_num++] =
                     child + root < tree_size ? child + root : child + root - tree_size;
@@ -64,7 +70,10 @@ void get_node_info_binomial_root(int tree_size, int root, int node, node_info_bi
 }
 
 
-void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *node_info) {
+void
+get_node_info_knomial(int tree_size, int k, int node,
+                      node_info_knomial_t *node_info)
+{
     int left = 0;
     int right = tree_size;
     int parent = -1;
@@ -81,7 +90,7 @@ void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *
         dist = (right - left + k - 1) / k;
         group = (node - left) / dist;
 
-        int new_right = left + (group + 1) * dist;
+        const int new_right = left + (group + 1) * dist;
         right = new_right > right ? right : new_right;
         left = left + group * dist;
     }
@@ -111,11 +120,14 @@ void get_node_info_knomial(int tree_size, int k, int node, node_info_knomial_t *
     node_info->children_num = children_num;
 }
 
-void get_node_info_knomial_root(int tree_size, int root, int k, int node, node_info_knomial_t *node_info) {
+void
+get_node_info_knomial_root(int tree_size, int root, int k, int node,
+                           node_info_knomial_t *node_info)
+{
     int left = 0;
     int right = tree_size;
     int parent = -1;
-    int dist = -1, group;
+    int dist = -1;
     int child, children_num = 0;
     int group_size = 0;
 
@@ -128,9 +140,9 @@ void get_node_info_knomial_root(int tree_size, int root, int k, int node, node_i
         parent = left;
 
         dist = (right - left + k - 1) / k;
-        group = (node - left) / dist;
+        const int group = (node - left) / dist;
 
-        int new_right = left + (group + 1) * dist;
+        const int new_right = left + (group + 1) * dist;
         right = new_right > right ? right : new_right;
         left = left + group * dist;
     }
@@ -165,9 +177,10 @@ void get_node_info_knomial_root(int tree_size, int root, int k, int node, node_i
     node_info->children_num = children_num;
 }
 
-
-
-void get_node_info_complete(int tree_size, int tree_degree, int node, node_info_complete_t *node_info) {
+void
+get_node_info_complete(int tree_size, int tree_degree, int node,
+                       node_info_complete_t *node_info)
+{
     node_info->parent = node != 0 ? (node - 1) / tree_degree : -1;
     node_info->children_begin = node * tree_degree + 1;
 
@@ -186,7 +199,11 @@ void get_node_info_complete(int tree_size, int tree_degree, int node, node_info_
     node_info->children_num = node_info->children_end - node_info->children_begin;
 }
 
-void get_node_info_complete_root(int tree_size, int root, int tree_degree, int node, node_info_complete_t *node_info) {
+void
+get_node_info_complete_root(int tree_size, int root,
+                            int tree_degree, int node,
+                            node_info_complete_t *node_info)
+{
     int parent;
     int children_begin, children_end;
     node = root <= node ? node - root : node - root + tree_size;

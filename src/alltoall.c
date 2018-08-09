@@ -105,7 +105,7 @@ inline static int edge_color(int i, int me, int npes) {
         const int me = shmem_my_pe();                                   \
                                                                         \
         /* Get my index in the active set */                            \
-        const int me_as = (me - PE_start) / stride;                     \
+        /* const int me_as = (me - PE_start) / stride; */               \
                                                                         \
         void *const dest_ptr = ((uint8_t *) dest) + me * nelems;        \
         void const *source_ptr;                                         \

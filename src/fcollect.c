@@ -369,7 +369,7 @@ fcollect_helper_neighbor_exchange(void *dest, const void *source,
 
     /* Remaining npes/2 - 1 rounds */
     for (i = 1; i < PE_size / 2; i++) {
-        parity = i % 2 ? 1 : 0;
+        parity = (i % 2) ? 1 : 0;
         data = ((char *) dest) + send_offset[parity] * nbytes;
 
         /* Send data */

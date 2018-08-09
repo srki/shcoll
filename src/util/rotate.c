@@ -6,10 +6,12 @@
 #include <memory.h>
 #include "rotate.h"
 
-static inline size_t gcd(size_t a, size_t b) {
-    size_t r;
+static inline size_t
+gcd(size_t a, size_t b)
+{
     while (1) {
-        r = a % b;
+        const size_t r = a % b;
+
         if (r == 0) {
             return b;
         }
@@ -19,9 +21,10 @@ static inline size_t gcd(size_t a, size_t b) {
     }
 }
 
-void rotate_inplace(char *arr, size_t size, size_t dist) {
-    size_t i, j, k;
-    char temp;
+void
+rotate_inplace(char *arr, size_t size, size_t dist)
+{
+    size_t i;
 
     if (dist == 0) {
         return;
@@ -30,9 +33,13 @@ void rotate_inplace(char *arr, size_t size, size_t dist) {
     size_t groups = gcd(dist, size);
 
     for (i = 0; i < groups; i++) {
+        char temp;
+        size_t j = i;
+
         temp = arr[i];
-        j = i;
-        while(1) {
+        while (1) {
+            size_t k;
+
             if (j < dist) {
                 k = size - dist + j;
             } else {
