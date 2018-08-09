@@ -15,8 +15,11 @@
 /**
  @param pSync pSync should have at least 2 elements
  */
-inline static void fcollect_helper_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                          int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_linear(void *dest, const void *source, size_t nbytes,
+                       int PE_start, int logPE_stride, int PE_size,
+                       long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -34,8 +37,11 @@ inline static void fcollect_helper_linear(void *dest, const void *source, size_t
     shcoll_broadcast8_linear(dest, dest, nbytes * shmem_n_pes(), PE_start, PE_start, logPE_stride, PE_size, pSync + 1);
 }
 
-inline static void fcollect_helper_all_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                              int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_all_linear(void *dest, const void *source, size_t nbytes,
+                           int PE_start, int logPE_stride, int PE_size,
+                           long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
@@ -61,8 +67,11 @@ inline static void fcollect_helper_all_linear(void *dest, const void *source, si
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
 
-inline static void fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
-                                              int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes,
+                            int PE_start, int logPE_stride, int PE_size,
+                            long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
@@ -83,8 +92,11 @@ inline static void fcollect_helper_all_linear1(void *dest, const void *source, s
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_rec_dbl(void *dest, const void *source, size_t nbytes, int PE_start,
-                                           int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_rec_dbl(void *dest, const void *source, size_t nbytes,
+                        int PE_start, int logPE_stride, int PE_size,
+                        long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -116,8 +128,11 @@ inline static void fcollect_helper_rec_dbl(void *dest, const void *source, size_
 /**
  * @param pSync pSync should have at least 1 element
  */
-inline static void fcollect_helper_ring(void *dest, const void *source, size_t nbytes, int PE_start,
-                                        int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_ring(void *dest, const void *source, size_t nbytes,
+                     int PE_start, int logPE_stride, int PE_size,
+                     long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -144,8 +159,11 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck(void *dest, const void *source, size_t nbytes,
+                      int PE_start, int logPE_stride, int PE_size,
+                      long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -179,8 +197,11 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
 /**
 * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
 */
-inline static void fcollect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes, int PE_start,
-                                               int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes,
+                                int PE_start, int logPE_stride, int PE_size,
+                                long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -221,8 +242,11 @@ inline static void fcollect_helper_bruck_no_rotate(void *dest, const void *sourc
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck_signal(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_signal(void *dest, const void *source, size_t nbytes,
+                             int PE_start, int logPE_stride, int PE_size,
+                             long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -255,8 +279,11 @@ inline static void fcollect_helper_bruck_signal(void *dest, const void *source, 
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck_inplace(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_inplace(void *dest, const void *source, size_t nbytes,
+                              int PE_start, int logPE_stride, int PE_size,
+                              long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -290,8 +317,12 @@ inline static void fcollect_helper_bruck_inplace(void *dest, const void *source,
 /**
  * @param pSync pSync should have at least 2 elements
  */
-inline static void fcollect_helper_neighbor_exchange(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                     int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_neighbor_exchange(void *dest, const void *source,
+                                  size_t nbytes,
+                                  int PE_start, int logPE_stride, int PE_size,
+                                  long *pSync)
+{
     assert(PE_size % 2 == 0);
 
     const int stride = 1 << logPE_stride;
@@ -358,12 +389,19 @@ inline static void fcollect_helper_neighbor_exchange(void *dest, const void *sou
     pSync[1] = SHCOLL_SYNC_VALUE;
 }
 
-#define SHCOLL_FCOLLECT_DEFINITION(_name, _size)                                                        \
-    void shcoll_fcollect##_size##_##_name(void *dest, const void *source, size_t nelems,                \
-                                          int PE_start, int logPE_stride, int PE_size, long *pSync) {   \
-        fcollect_helper_##_name(dest, source, (_size) / CHAR_BIT * nelems,                              \
-                               PE_start, logPE_stride, PE_size, pSync);                                 \
-}                                                                                                       \
+#define SHCOLL_FCOLLECT_DEFINITION(_name, _size)                        \
+    void                                                                \
+    shcoll_fcollect##_size##_##_name(void *dest, const void *source,    \
+                                     size_t nelems,                     \
+                                     int PE_start, int logPE_stride,    \
+                                     int PE_size,                       \
+                                     long *pSync)                       \
+    {                                                                   \
+        fcollect_helper_##_name(dest, source,                           \
+                                (_size) / CHAR_BIT * nelems,            \
+                                PE_start, logPE_stride, PE_size,        \
+                                pSync);                                 \
+    }
 
 /* @formatter:off */
 
