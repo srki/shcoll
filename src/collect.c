@@ -12,8 +12,11 @@
 #include <limits.h>
 #include <assert.h>
 
-inline static void collect_helper_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_linear(void *dest, const void *source, size_t nbytes,
+                      int PE_start, int logPE_stride, int PE_size,
+                      long *pSync)
+{
     /* pSync[0] is used for barrier
      * pSync[1] is used for broadcast
      * next sizeof(size_t) bytes are used for the offset */
@@ -57,8 +60,11 @@ inline static void collect_helper_linear(void *dest, const void *source, size_t 
     shmem_size_p(offset, SHCOLL_SYNC_VALUE, me);
 }
 
-inline static void collect_helper_all_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_all_linear(void *dest, const void *source, size_t nbytes,
+                          int PE_start, int logPE_stride, int PE_size,
+                          long *pSync)
+{
     /* pSync[0] is used for counting received messages
      * pSync[1..1+PREFIX_SUM_SYNC_SIZE) is used for prefix sum
      * next sizeof(size_t) bytes are used for the offset */
@@ -91,8 +97,11 @@ inline static void collect_helper_all_linear(void *dest, const void *source, siz
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
 
-inline static void collect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
-                                             int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_all_linear1(void *dest, const void *source, size_t nbytes,
+                           int PE_start, int logPE_stride, int PE_size,
+                           long *pSync)
+{
     /* pSync[0] is used for barrier
      * pSync[1..1+PREFIX_SUM_SYNC_SIZE) is used for prefix sum
      * next sizeof(size_t) bytes are used for the offset */
@@ -117,8 +126,11 @@ inline static void collect_helper_all_linear1(void *dest, const void *source, si
     shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync);
 }
 
-inline static void collect_helper_rec_dbl(void *dest, const void *source, size_t nbytes, int PE_start,
-                                          int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_rec_dbl(void *dest, const void *source, size_t nbytes,
+                       int PE_start, int logPE_stride, int PE_size,
+                       long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -159,8 +171,11 @@ inline static void collect_helper_rec_dbl(void *dest, const void *source, size_t
     }
 }
 
-inline static void collect_helper_rec_dbl_signal(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                 int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_rec_dbl_signal(void *dest, const void *source, size_t nbytes,
+                              int PE_start, int logPE_stride, int PE_size,
+                              long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -204,8 +219,11 @@ inline static void collect_helper_rec_dbl_signal(void *dest, const void *source,
 /* TODO Find a better way to choose this value */
 #define RING_DIFF 10
 
-inline static void collect_helper_ring(void *dest, const void *source, size_t nbytes, int PE_start,
-                                       int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_ring(void *dest, const void *source, size_t nbytes,
+                    int PE_start, int logPE_stride, int PE_size,
+                    long *pSync)
+{
     /*
      * pSync[0] is to track the progress of the left PE
      * pSync[1..RING_DIFF] is used to receive block sizes
@@ -261,8 +279,11 @@ inline static void collect_helper_ring(void *dest, const void *source, size_t nb
     shmem_long_atomic_add(receiver_progress, -round, me);
 }
 
-inline static void collect_helper_bruck(void *dest, const void *source, size_t nbytes, int PE_start,
-                                        int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_bruck(void *dest, const void *source, size_t nbytes,
+                     int PE_start, int logPE_stride, int PE_size,
+                     long *pSync)
+{
     /* pSync[0] is used for barrier
      * pSync[1] is used for broadcast
      * pSync[2..2+PREFIX_SUM_SYNC_SIZE) bytes are used for the prefix sum
@@ -329,8 +350,11 @@ inline static void collect_helper_bruck(void *dest, const void *source, size_t n
     rotate(dest, total_nbytes, block_offset);
 }
 
-inline static void collect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                  int logPE_stride, int PE_size, long *pSync) {
+inline static void
+collect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes,
+                               int PE_start, int logPE_stride, int PE_size,
+                               long *pSync)
+{
     /* pSync[0] is used for barrier
      * pSync[1] is used for broadcast
      * pSync[2..2+PREFIX_SUM_SYNC_SIZE) bytes are used for the prefix sum
@@ -410,12 +434,19 @@ inline static void collect_helper_bruck_no_rotate(void *dest, const void *source
     shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, barrier_pSync);
 }
 
-#define SHCOLL_COLLECT_DEFINITION(_name, _size)                                                         \
-    void shcoll_collect##_size##_##_name(void *dest, const void *source, size_t nelems,                 \
-                                         int PE_start, int logPE_stride, int PE_size, long *pSync) {    \
-        collect_helper_##_name(dest, source, (_size) / CHAR_BIT * nelems,                               \
-                               PE_start, logPE_stride, PE_size, pSync);                                 \
-}                                                                                                       \
+#define SHCOLL_COLLECT_DEFINITION(_name, _size)                         \
+    void                                                                \
+    shcoll_collect##_size##_##_name(void *dest, const void *source,     \
+                                    size_t nelems,                      \
+                                    int PE_start, int logPE_stride,     \
+                                    int PE_size,                        \
+                                    long *pSync)                        \
+    {                                                                   \
+        collect_helper_##_name(dest, source,                            \
+                               (_size) / CHAR_BIT * nelems,             \
+                               PE_start, logPE_stride, PE_size,         \
+                               pSync);                                  \
+    }                                                                   \
 
 
 /* @formatter:off */
