@@ -1,7 +1,5 @@
 # For license: see LICENSE file at top-level
 
-CC                      = oshcc
-
 SOURCES                 = alltoall.c \
 				alltoalls.c \
 				barrier.c \
@@ -15,12 +13,15 @@ SOURCES                += util/bithacks.c \
 				util/scan.c \
 				util/trees.c
 
+BUILD_CFLAGS            = $(AM_CFLAGS) @SHMEM_CPPFLAGS@
+
 lib_LTLIBRARIES         = libshcoll.la
 libshcoll_la_SOURCES    = $(SOURCES)
-libshcoll_la_CFLAGS     = $(AM_CFLAGS)
+libshcoll_la_CFLAGS     = $(BUILD_CFLAGS)
 
 lib_LIBRARIES           = libshcoll.a
 libshcoll_a_SOURCES     = $(SOURCES)
+libshcoll_a_CFLAGS      = $(BUILD_CFLAGS)
 
 nobase_include_HEADERS  = shcoll.h \
 				shcoll/alltoall.h \

@@ -36,6 +36,40 @@ AC_CHECK_TYPES([int64_t])
 AC_CHECK_TYPES([uint64_t])
 AC_CHECK_TYPES([ptrdiff_t])
 
+# ------------------------------------------------------------------------
+#
+# tell us where the shmem.h header file lives
+#
+shmem_hdr_happy=no
+
+AC_ARG_WITH([shmemh-dir],
+            [AS_HELP_STRING([--with-shmemh-dir=DIR], [Where OpenSHMEM header lives])])
+
+AS_IF([test "x$with_shmemh_dir" != "x"],
+      [
+          hdr="$with_shmemh_dir/shmem.h"
+          AS_IF([test -r "$hdr"],
+          [
+	      SHMEM_CPPFLAGS="-I$with_shmemh_dir"
+	      AC_DEFINE_UNQUOTED([SHMEM_HEADER_DIR], ["$with_shmemh_dir"], [Where OpenSHMEM header file lives])
+	      AC_SUBST([SHMEM_CPPFLAGS])
+	      shmem_hdr_happy=yes
+	      AC_MSG_NOTICE([Using OpenSHMEM header in $with_shmemh_dir])
+          ],
+	  [
+		AC_MSG_ERROR([Unable to find OpenSHMEM header file $hdr])
+	  ]
+	  )
+	  ],
+	  [
+	    AC_MSG_ERROR([Unable to find OpenSHMEM header directory $with_shmemh_dir])
+          ]
+          )
+
+AM_CONDITIONAL([HAVE_SHMEM_HEADER], [test "x$shmem_hdr_happy" != xno])
+#
+# ------------------------------------------------------------------------
+
 #
 # Checks for library functions.
 #
