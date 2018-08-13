@@ -337,7 +337,8 @@ collect_helper_bruck(void *dest, const void *source, size_t nbytes,
 
         round_nbytes = recv_nbytes + round_nbytes < total_nbytes ? round_nbytes : total_nbytes - recv_nbytes;
 
-        shmem_getmem(dest + recv_nbytes, dest, round_nbytes, recv_from);
+        shmem_getmem(((char *) dest) + recv_nbytes, dest,
+                     round_nbytes, recv_from);
         recv_nbytes += round_nbytes;
 
         /* Reset the block size from the current round */

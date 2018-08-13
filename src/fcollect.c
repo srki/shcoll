@@ -142,7 +142,7 @@ fcollect_helper_ring(void *dest, const void *source, size_t nbytes,
     int data_block = me_as;
     int i;
 
-    memcpy(dest + data_block * nbytes, source, nbytes);
+    memcpy((char *) dest + data_block * nbytes, source, nbytes);
 
     for (i = 1; i < PE_size; i++) {
         shmem_putmem_nbi((char*)dest + data_block * nbytes, (char*)dest + data_block * nbytes, nbytes, peer);
@@ -182,7 +182,7 @@ fcollect_helper_bruck(void *dest, const void *source, size_t nbytes,
         peer = (int) (PE_start + ((me_as - distance + PE_size) % PE_size) * stride);
         to_send = (2 * sent_bytes <= total_nbytes) ? sent_bytes : total_nbytes - sent_bytes;
 
-        shmem_putmem_nbi(dest + sent_bytes, dest, to_send, peer);
+        shmem_putmem_nbi((char *) dest + sent_bytes, dest, to_send, peer);
         shmem_fence();
         shmem_long_p(pSync + round, SHCOLL_SYNC_VALUE + 1, peer);
 
@@ -302,7 +302,7 @@ fcollect_helper_bruck_inplace(void *dest, const void *source, size_t nbytes,
         peer = (int) (PE_start + ((me_as - distance + PE_size) % PE_size) * stride);
         to_send = (2 * sent_bytes <= total_nbytes) ? sent_bytes : total_nbytes - sent_bytes;
 
-        shmem_putmem_nbi(dest + sent_bytes, dest, to_send, peer);
+        shmem_putmem_nbi((char *) dest + sent_bytes, dest, to_send, peer);
         shmem_fence();
         shmem_long_p(pSync + round, SHCOLL_SYNC_VALUE + 1, peer);
 
