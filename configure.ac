@@ -9,6 +9,8 @@ AC_INIT([SHCOLL], [1.0], [somewhere], [], [somewhere])
 AC_CONFIG_SRCDIR([autogen.sh])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
+# for multiple levels of autoconf packages (embedding)
+AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([subdir-objects tar-pax])
 
 AM_SILENT_RULES([yes])
