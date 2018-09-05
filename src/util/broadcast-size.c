@@ -4,7 +4,7 @@
 
 #include "broadcast-size.h"
 #include "trees.h"
-#include "../global.h"
+#include "../shcoll.h"
 
 
 const int binomial_tree_radix = 8;

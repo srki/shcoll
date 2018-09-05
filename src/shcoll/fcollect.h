@@ -1,18 +1,14 @@
-//
-// Created by Srdan Milakovic on 5/17/18.
-//
+#ifndef _SHCOLL_FCOLLECT_H
+#define _SHCOLL_FCOLLECT_H 1
 
-#ifndef OPENSHMEM_COLLECTIVE_ROUTINES_FCOLLECT_H
-#define OPENSHMEM_COLLECTIVE_ROUTINES_FCOLLECT_H
-
-#include <stddef.h>
-#include "global.h"
-
-#define SHCOLL_FCOLLECT_DECLARATION(_name, _size)                                                       \
-    void shcoll_fcollect##_size##_##_name(void *dest, const void *source, size_t nelems,                \
-                                          int PE_start, int logPE_stride, int PE_size, long *pSync);    \
-
-/* @formatter:off */
+#define SHCOLL_FCOLLECT_DECLARATION(_name, _size)               \
+    void shcoll_fcollect##_size##_##_name(void *dest,           \
+                                          const void *source,   \
+                                          size_t nelems,        \
+                                          int PE_start,         \
+                                          int logPE_stride,     \
+                                          int PE_size,          \
+                                          long *pSync);
 
 SHCOLL_FCOLLECT_DECLARATION(linear, 32)
 SHCOLL_FCOLLECT_DECLARATION(linear, 64)
@@ -41,10 +37,7 @@ SHCOLL_FCOLLECT_DECLARATION(bruck_signal, 64)
 SHCOLL_FCOLLECT_DECLARATION(bruck_inplace, 32)
 SHCOLL_FCOLLECT_DECLARATION(bruck_inplace, 64)
 
-SHCOLL_FCOLLECT_DECLARATION(neighbour_exchange, 32)
-SHCOLL_FCOLLECT_DECLARATION(neighbour_exchange, 64)
+SHCOLL_FCOLLECT_DECLARATION(neighbor_exchange, 32)
+SHCOLL_FCOLLECT_DECLARATION(neighbor_exchange, 64)
 
-/* @formatter:on */
-
-
-#endif //OPENSHMEM_COLLECTIVE_ROUTINES_FCOLLECT_H
+#endif /* ! _SHCOLL_FCOLLECT_H */

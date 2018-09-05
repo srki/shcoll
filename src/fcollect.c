@@ -2,11 +2,11 @@
 // Created by Srdan Milakovic on 5/17/18.
 //
 
-#include "fcollect.h"
-#include "barrier.h"
-#include "broadcast.h"
-#include "../test/util/debug.h"
+#include "shcoll.h"
+#include "shcoll/compat.h"
+#include "../tests/util/debug.h"
 #include "util/rotate.h"
+
 #include <limits.h>
 #include <string.h>
 #include <assert.h>
@@ -15,8 +15,11 @@
 /**
  @param pSync pSync should have at least 2 elements
  */
-inline static void fcollect_helper_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                          int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_linear(void *dest, const void *source, size_t nbytes,
+                       int PE_start, int logPE_stride, int PE_size,
+                       long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -34,8 +37,11 @@ inline static void fcollect_helper_linear(void *dest, const void *source, size_t
     shcoll_broadcast8_linear(dest, dest, nbytes * shmem_n_pes(), PE_start, PE_start, logPE_stride, PE_size, pSync + 1);
 }
 
-inline static void fcollect_helper_all_linear(void *dest, const void *source, size_t nbytes, int PE_start,
-                                              int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_all_linear(void *dest, const void *source, size_t nbytes,
+                           int PE_start, int logPE_stride, int PE_size,
+                           long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
@@ -61,8 +67,11 @@ inline static void fcollect_helper_all_linear(void *dest, const void *source, si
     shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
 }
 
-inline static void fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes, int PE_start,
-                                              int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_all_linear1(void *dest, const void *source, size_t nbytes,
+                            int PE_start, int logPE_stride, int PE_size,
+                            long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;
@@ -83,8 +92,11 @@ inline static void fcollect_helper_all_linear1(void *dest, const void *source, s
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_rec_dbl(void *dest, const void *source, size_t nbytes, int PE_start,
-                                           int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_rec_dbl(void *dest, const void *source, size_t nbytes,
+                        int PE_start, int logPE_stride, int PE_size,
+                        long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -116,8 +128,11 @@ inline static void fcollect_helper_rec_dbl(void *dest, const void *source, size_
 /**
  * @param pSync pSync should have at least 1 element
  */
-inline static void fcollect_helper_ring(void *dest, const void *source, size_t nbytes, int PE_start,
-                                        int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_ring(void *dest, const void *source, size_t nbytes,
+                     int PE_start, int logPE_stride, int PE_size,
+                     long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -127,7 +142,7 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
     int data_block = me_as;
     int i;
 
-    memcpy(dest + data_block * nbytes, source, nbytes);
+    memcpy((char *) dest + data_block * nbytes, source, nbytes);
 
     for (i = 1; i < PE_size; i++) {
         shmem_putmem_nbi((char*)dest + data_block * nbytes, (char*)dest + data_block * nbytes, nbytes, peer);
@@ -144,8 +159,11 @@ inline static void fcollect_helper_ring(void *dest, const void *source, size_t n
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck(void *dest, const void *source, size_t nbytes,
+                      int PE_start, int logPE_stride, int PE_size,
+                      long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -164,7 +182,7 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
         peer = (int) (PE_start + ((me_as - distance + PE_size) % PE_size) * stride);
         to_send = (2 * sent_bytes <= total_nbytes) ? sent_bytes : total_nbytes - sent_bytes;
 
-        shmem_putmem_nbi(dest + sent_bytes, dest, to_send, peer);
+        shmem_putmem_nbi((char *) dest + sent_bytes, dest, to_send, peer);
         shmem_fence();
         shmem_long_p(pSync + round, SHCOLL_SYNC_VALUE + 1, peer);
 
@@ -179,8 +197,11 @@ inline static void fcollect_helper_bruck(void *dest, const void *source, size_t 
 /**
 * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
 */
-inline static void fcollect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes, int PE_start,
-                                               int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_no_rotate(void *dest, const void *source, size_t nbytes,
+                                int PE_start, int logPE_stride, int PE_size,
+                                long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -221,8 +242,11 @@ inline static void fcollect_helper_bruck_no_rotate(void *dest, const void *sourc
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck_signal(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_signal(void *dest, const void *source, size_t nbytes,
+                             int PE_start, int logPE_stride, int PE_size,
+                             long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -255,8 +279,11 @@ inline static void fcollect_helper_bruck_signal(void *dest, const void *source, 
 /**
  * @param pSync pSync should have at least ⌈log(max_rank)⌉ elements
  */
-inline static void fcollect_helper_bruck_inplace(void *dest, const void *source, size_t nbytes, int PE_start,
-                                         int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_bruck_inplace(void *dest, const void *source, size_t nbytes,
+                              int PE_start, int logPE_stride, int PE_size,
+                              long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
@@ -275,7 +302,7 @@ inline static void fcollect_helper_bruck_inplace(void *dest, const void *source,
         peer = (int) (PE_start + ((me_as - distance + PE_size) % PE_size) * stride);
         to_send = (2 * sent_bytes <= total_nbytes) ? sent_bytes : total_nbytes - sent_bytes;
 
-        shmem_putmem_nbi(dest + sent_bytes, dest, to_send, peer);
+        shmem_putmem_nbi((char *) dest + sent_bytes, dest, to_send, peer);
         shmem_fence();
         shmem_long_p(pSync + round, SHCOLL_SYNC_VALUE + 1, peer);
 
@@ -290,14 +317,18 @@ inline static void fcollect_helper_bruck_inplace(void *dest, const void *source,
 /**
  * @param pSync pSync should have at least 2 elements
  */
-inline static void fcollect_helper_neighbour_exchange(void *dest, const void *source, size_t nbytes, int PE_start,
-                                                      int logPE_stride, int PE_size, long *pSync) {
+inline static void
+fcollect_helper_neighbor_exchange(void *dest, const void *source,
+                                  size_t nbytes,
+                                  int PE_start, int logPE_stride, int PE_size,
+                                  long *pSync)
+{
     assert(PE_size % 2 == 0);
 
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
 
-    int neighbour_pe[2];
+    int neighbor_pe[2];
     int send_offset[2];
     int send_offset_diff;
 
@@ -308,16 +339,16 @@ inline static void fcollect_helper_neighbour_exchange(void *dest, const void *so
     int me_as = (me - PE_start) / stride;
 
     if (me_as % 2 == 0) {
-        neighbour_pe[0] = PE_start + ((me_as + 1) % PE_size) * stride;
-        neighbour_pe[1] = PE_start + ((me_as - 1 + PE_size) % PE_size) * stride;
+        neighbor_pe[0] = PE_start + ((me_as + 1) % PE_size) * stride;
+        neighbor_pe[1] = PE_start + ((me_as - 1 + PE_size) % PE_size) * stride;
 
         send_offset[0] = (me_as - 2 + PE_size) % PE_size & ~0x1;
         send_offset[1] = me_as & ~0x1;
 
         send_offset_diff = 2;
     } else {
-        neighbour_pe[0] = PE_start + ((me_as - 1 + PE_size) % PE_size) * stride;
-        neighbour_pe[1] = PE_start + ((me_as + 1) % PE_size) * stride;
+        neighbor_pe[0] = PE_start + ((me_as - 1 + PE_size) % PE_size) * stride;
+        neighbor_pe[1] = PE_start + ((me_as + 1) % PE_size) * stride;
 
         send_offset[0] = (me_as + 2) % PE_size & ~0x1;
         send_offset[1] = me_as & ~0x1;
@@ -330,27 +361,27 @@ inline static void fcollect_helper_neighbour_exchange(void *dest, const void *so
 
     memcpy(data, source, nbytes);
 
-    shmem_putmem_nbi(data, data, nbytes, neighbour_pe[0]);
+    shmem_putmem_nbi(data, data, nbytes, neighbor_pe[0]);
     shmem_fence();
-    shmem_long_atomic_inc(pSync, neighbour_pe[0]);
+    shmem_long_atomic_inc(pSync, neighbor_pe[0]);
 
     shmem_long_wait_until(pSync, SHMEM_CMP_GE, 1);
 
     /* Remaining npes/2 - 1 rounds */
     for (i = 1; i < PE_size / 2; i++) {
-        parity = i % 2 ? 1 : 0;
+        parity = (i % 2) ? 1 : 0;
         data = ((char *) dest) + send_offset[parity] * nbytes;
 
         /* Send data */
-        shmem_putmem_nbi(data, data, 2 * nbytes, neighbour_pe[parity]);
+        shmem_putmem_nbi(data, data, 2 * nbytes, neighbor_pe[parity]);
         shmem_fence();
-        shmem_long_atomic_inc(pSync + parity, neighbour_pe[parity]);
+        shmem_long_atomic_inc(pSync + parity, neighbor_pe[parity]);
 
         /* Calculate offset for the next round */
         send_offset[parity] = (send_offset[parity] + send_offset_diff) % PE_size;
         send_offset_diff = PE_size - send_offset_diff;
 
-        /* Wait for the data from the neighbour */
+        /* Wait for the data from the neighbor */
         shmem_long_wait_until(pSync + parity, SHMEM_CMP_GT, i / 2);
     }
 
@@ -358,12 +389,19 @@ inline static void fcollect_helper_neighbour_exchange(void *dest, const void *so
     pSync[1] = SHCOLL_SYNC_VALUE;
 }
 
-#define SHCOLL_FCOLLECT_DEFINITION(_name, _size)                                                        \
-    void shcoll_fcollect##_size##_##_name(void *dest, const void *source, size_t nelems,                \
-                                          int PE_start, int logPE_stride, int PE_size, long *pSync) {   \
-        fcollect_helper_##_name(dest, source, (_size) / CHAR_BIT * nelems,                              \
-                               PE_start, logPE_stride, PE_size, pSync);                                 \
-}                                                                                                       \
+#define SHCOLL_FCOLLECT_DEFINITION(_name, _size)                        \
+    void                                                                \
+    shcoll_fcollect##_size##_##_name(void *dest, const void *source,    \
+                                     size_t nelems,                     \
+                                     int PE_start, int logPE_stride,    \
+                                     int PE_size,                       \
+                                     long *pSync)                       \
+    {                                                                   \
+        fcollect_helper_##_name(dest, source,                           \
+                                (_size) / CHAR_BIT * nelems,            \
+                                PE_start, logPE_stride, PE_size,        \
+                                pSync);                                 \
+    }
 
 /* @formatter:off */
 
@@ -394,8 +432,8 @@ SHCOLL_FCOLLECT_DEFINITION(bruck_signal, 64)
 SHCOLL_FCOLLECT_DEFINITION(bruck_inplace, 32)
 SHCOLL_FCOLLECT_DEFINITION(bruck_inplace, 64)
 
-SHCOLL_FCOLLECT_DEFINITION(neighbour_exchange, 32)
-SHCOLL_FCOLLECT_DEFINITION(neighbour_exchange, 64)
+SHCOLL_FCOLLECT_DEFINITION(neighbor_exchange, 32)
+SHCOLL_FCOLLECT_DEFINITION(neighbor_exchange, 64)
 
 /* @formatter:on */
 

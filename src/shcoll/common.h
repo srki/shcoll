@@ -1,18 +1,13 @@
-//
-// Created by Srdan Milakovic on 5/16/18.
-//
+#ifndef _SHCOLL_COMMON_H
+#define _SHCOLL_COMMON_H 1
 
-#ifndef OPENSHMEM_COLLECTIVE_ROUTINES_GLOBAL_H
-#define OPENSHMEM_COLLECTIVE_ROUTINES_GLOBAL_H
-
-#include <shmem.h>
-#include "util/wraper.h"
+#include <stddef.h>             /* ptrdiff_t */
 
 #define SHCOLL_BCAST_SYNC_SIZE 2
 
 #define SHCOLL_SYNC_VALUE 0
 
-#define PE_SIZE_LOG (32)
+#define PE_SIZE_LOG 32
 
 /* TODO chose correct values */
 #define SHCOLL_ALLTOALL_SYNC_SIZE 64
@@ -22,4 +17,4 @@
 #define SHCOLL_REDUCE_SYNC_SIZE (PE_SIZE_LOG * 2)
 #define SHCOLL_REDUCE_MIN_WRKDATA_SIZE SHMEM_REDUCE_MIN_WRKDATA_SIZE
 
-#endif //OPENSHMEM_COLLECTIVE_ROUTINES_GLOBAL_H
+#endif /* ! _SHCOLL_COMMON_H */

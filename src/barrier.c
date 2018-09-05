@@ -1,14 +1,18 @@
-#include "barrier.h"
+#include "shcoll.h"
 #include "util/trees.h"
 
 static int tree_degree_barrier = 2;
 static int knomial_tree_radix_barrier = 2;
 
-void shcoll_set_tree_degree(int tree_degree) {
+void
+shcoll_set_tree_degree(int tree_degree)
+{
     tree_degree_barrier = tree_degree;
 }
 
-void shcoll_set_knomial_tree_radix_barrier(int tree_radix) {
+void
+shcoll_set_knomial_tree_radix_barrier(int tree_radix)
+{
     knomial_tree_radix_barrier = tree_radix;
 }
 
@@ -16,16 +20,21 @@ void shcoll_set_knomial_tree_radix_barrier(int tree_radix) {
  * Linear barrier implementation
  */
 
-inline static void barrier_sync_helper_linear(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+inline static void
+barrier_sync_helper_linear(int PE_start,
+                           int logPE_stride,
+                           int PE_size,
+                           long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
-
     int i;
     int pe;
 
     if (PE_start == me) {
         /* wait for the rest of the AS to poke me */
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + PE_size - 1);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ,
+                              SHCOLL_SYNC_VALUE + PE_size - 1);
         shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);
         shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE);
 
@@ -50,7 +59,12 @@ inline static void barrier_sync_helper_linear(int PE_start, int logPE_stride, in
  * Complete tree barrier implementation
  */
 
-inline static void barrier_sync_helper_complete_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+inline static void
+barrier_sync_helper_complete_tree(int PE_start,
+                                  int logPE_stride,
+                                  int PE_size,
+                                  long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
@@ -75,7 +89,8 @@ inline static void barrier_sync_helper_complete_tree(int PE_start, int logPE_str
         shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
 
         /* Wait for the poke from parent */
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ,
+                              SHCOLL_SYNC_VALUE + npokes + 1);
     }
 
     /* Clear pSync and poke the children */
@@ -90,7 +105,12 @@ inline static void barrier_sync_helper_complete_tree(int PE_start, int logPE_str
  * Binomial tree barrier implementation
  */
 
-inline static void barrier_sync_helper_binomial_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+inline static void
+barrier_sync_helper_binomial_tree(int PE_start,
+                                  int logPE_stride,
+                                  int PE_size,
+                                  long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
@@ -115,7 +135,8 @@ inline static void barrier_sync_helper_binomial_tree(int PE_start, int logPE_str
         shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
 
         /* Wait for the poke from parent */
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ,
+                              SHCOLL_SYNC_VALUE + npokes + 1);
     }
 
     /* Clear pSync and poke the children */
@@ -130,7 +151,12 @@ inline static void barrier_sync_helper_binomial_tree(int PE_start, int logPE_str
  * Knomial tree barrier implementation
  */
 
-inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+inline static void
+barrier_sync_helper_knomial_tree(int PE_start,
+                                 int logPE_stride,
+                                 int PE_size,
+                                 long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 
@@ -155,7 +181,8 @@ inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stri
         shmem_long_atomic_inc(pSync, PE_start + node.parent * stride);
 
         /* Wait for the poke from parent */
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + npokes + 1);
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ,
+                              SHCOLL_SYNC_VALUE + npokes + 1);
     }
 
     /* Clear pSync and poke the children */
@@ -170,18 +197,24 @@ inline static void barrier_sync_helper_knomial_tree(int PE_start, int logPE_stri
  * Dissemination barrier implementation
  */
 
-inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_stride, int PE_size, long *pSync) {
+inline static void
+barrier_sync_helper_dissemination(int PE_start,
+                                  int logPE_stride,
+                                  int PE_size,
+                                  long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
-
     /* Calculate my index in the active set */
     const int me_as = (me - PE_start) / stride;
-
     int round;
     int distance;
     int target_as;
+    long unused;
 
-    for (round = 0, distance = 1; distance < PE_size; round++, distance <<= 1) {
+    for (round = 0, distance = 1;
+         distance < PE_size;
+         round++, distance <<= 1) {
         target_as = (me_as + distance) % PE_size;
 
         /* Poke the target for the current round */
@@ -192,37 +225,40 @@ inline static void barrier_sync_helper_dissemination(int PE_start, int logPE_str
 
         /* Reset pSync element, fadd is used instead of add because we have to
            be sure that reset happens before next invocation of barrier */
-        shmem_long_atomic_fetch_add(&pSync[round], -1, me);
+        unused = shmem_long_atomic_fetch_add(&pSync[round], -1, me);
     }
 }
 
-
-static long barrier_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
-static long sync_all_pSync[SHCOLL_BARRIER_SYNC_SIZE] = {SHCOLL_SYNC_VALUE};
-
-
-#define SHCOLL_BARRIER_SYNC_DEFINITION(_name)                                   \
-    void shcoll_barrier_##_name(int PE_start, int logPE_stride,                 \
-                                int PE_size, long *pSync) {                     \
-        shmem_quiet();                                                          \
-        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_barrier_all_##_name() {                                         \
-        shmem_quiet();                                                          \
-        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), barrier_all_pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_sync_##_name(int PE_start, int logPE_stride,                    \
-                             int PE_size, long *pSync) {                        \
-        /* TODO: memory fence */                                                \
-        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync);    \
-    }                                                                           \
-                                                                                \
-    void shcoll_sync_all_##_name() {                                            \
-        /* TODO: memory fence */                                                \
-        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), sync_all_pSync);       \
-    }                                                                           \
+#define SHCOLL_BARRIER_SYNC_DEFINITION(_name)                           \
+    void                                                                \
+    shcoll_barrier_##_name(int PE_start, int logPE_stride,              \
+                           int PE_size, long *pSync)                    \
+    {                                                                   \
+        shmem_quiet();                                                  \
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync); \
+    }                                                                   \
+                                                                        \
+    void                                                                \
+    shcoll_barrier_all_##_name(long *pSync)                             \
+    {                                                                   \
+        shmem_quiet();                                                  \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), pSync);        \
+    }                                                                   \
+                                                                        \
+    void                                                                \
+    shcoll_sync_##_name(int PE_start, int logPE_stride,                 \
+                        int PE_size, long *pSync)                       \
+    {                                                                   \
+        /* TODO: memory fence */                                        \
+        barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync); \
+    }                                                                   \
+                                                                        \
+    void                                                                \
+    shcoll_sync_all_##_name(long *pSync)                                \
+    {                                                                   \
+        /* TODO: memory fence */                                        \
+        barrier_sync_helper_##_name(0, 0, shmem_n_pes(), pSync);        \
+    }                                                                   \
 
 /* @formatter:off */
 
