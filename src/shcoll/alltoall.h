@@ -5,6 +5,8 @@
 #ifndef _SHCOLL_ALLTOALL_H
 #define _SHCOLL_ALLTOALL_H 1
 
+void shcoll_set_alltoall_rounds_sync(int rounds_sync);
+
 #define SHCOLL_ALLTOALL_DECLARATION(_name, _size)               \
     void shcoll_alltoall##_size##_##_name(void *dest,           \
                                           const void *source,   \

@@ -31,6 +31,13 @@ edge_color(int i, int me, int npes)
     }
 }
 
+static int alltoalls_rounds_sync = INT32_MAX;
+
+void
+shcoll_set_alltoalls_rounds_sync(int rounds_sync)
+{
+    alltoalls_rounds_sync = rounds_sync;
+}
 
 #define SHCOLL_ALLTOALLS_BARRIER_DEFINITION(_name, _size, _peer, _cond, _nbi) \
     void                                                                    \
@@ -71,6 +78,12 @@ edge_color(int i, int me, int npes)
                                                                             \
             shmem_iput##_size##_nbi(dest_ptr, source_ptr, dst, sst,         \
                                       nelems, PE_start + peer_as * stride); \
+                                                                            \
+            if (i % alltoalls_rounds_sync == 0) {                           \
+                /* TODO: change to auto shcoll barrier */                   \
+                shcoll_barrier_binomial_tree(PE_start, logPE_stride,        \
+                                PE_size, pSync);                            \
+            }                                                               \
         }                                                                   \
                                                                             \
         /* TODO: change to auto shcoll barrier */                           \
