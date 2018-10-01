@@ -4,6 +4,7 @@
 
 #include "shcoll.h"
 #include "util/trees.h"
+#include "util/memfence.h"
 
 static int tree_degree_barrier = 2;
 static int knomial_tree_radix_barrier = 2;
@@ -253,14 +254,14 @@ barrier_sync_helper_dissemination(int PE_start,
     shcoll_sync_##_name(int PE_start, int logPE_stride,                 \
                         int PE_size, long *pSync)                       \
     {                                                                   \
-        /* TODO: memory fence */                                        \
+        LOAD_STORE_FENCE();                                             \
         barrier_sync_helper_##_name(PE_start, logPE_stride, PE_size, pSync); \
     }                                                                   \
                                                                         \
     void                                                                \
     shcoll_sync_all_##_name(long *pSync)                                \
     {                                                                   \
-        /* TODO: memory fence */                                        \
+        LOAD_STORE_FENCE();                                             \
         barrier_sync_helper_##_name(0, 0, shmem_n_pes(), pSync);        \
     }                                                                   \
 
