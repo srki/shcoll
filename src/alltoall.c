@@ -35,7 +35,7 @@ edge_color(int i, int me, int npes)
 static int alltoall_rounds_sync = INT32_MAX;
 
 void
-shcoll_set_alltoalls_rounds_sync(int rounds_sync)
+shcoll_set_alltoalls_round_sync(int rounds_sync)
 {
     alltoall_rounds_sync = rounds_sync;
 }

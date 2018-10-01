@@ -5,6 +5,7 @@
 #include "shcoll.h"
 #include "util/bithacks.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
