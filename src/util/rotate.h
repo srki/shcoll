@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/18/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_ROTATE_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_ROTATE_H

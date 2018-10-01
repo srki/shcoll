@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "trees.h"
 #include "../../tests/util/run.h"
 

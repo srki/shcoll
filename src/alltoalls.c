@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/21/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include "shcoll.h"
 #include "shcoll/compat.h"
@@ -9,7 +9,9 @@
 #include <assert.h>
 
 
-inline static int edge_color(int i, int me, int npes) {
+inline static int
+edge_color(int i, int me, int npes)
+{
     int chr_idx;
     int v;
 

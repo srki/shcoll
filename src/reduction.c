@@ -1,6 +1,9 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "shcoll.h"
 #include "util/bithacks.h"
-#include "../tests/util/debug.h"
 
 #include <string.h>
 #include <stdlib.h>

@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #ifndef _SHCOLL_REDUCTION_H
 #define _SHCOLL_REDUCTION_H 1
 

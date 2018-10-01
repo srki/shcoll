@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #ifndef _SHCOLL_COMPAT_H
 #define _SHCOLL_COMPAT_H 1
 

@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/17/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 
 #include "fcollect.h"

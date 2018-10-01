@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "reduction.h"
 #include <string.h>
 #include <stdlib.h>

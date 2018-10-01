@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/24/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_SCAN_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_SCAN_H

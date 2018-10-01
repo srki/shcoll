@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #ifndef OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H
 #define OPENSHMEM_COLLECTIVE_ROUTINES_TREES_H
 

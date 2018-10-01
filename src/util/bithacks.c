@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 6/1/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include <limits.h>
 #include "bithacks.h"
@@ -9,7 +9,9 @@
 /*
  * https://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel
  */
-int reverse_bits(int number, int nbits) {
+int
+reverse_bits(int number, int nbits)
+{
     unsigned int a = number;
     unsigned int s = sizeof(a) * CHAR_BIT; // bit size; must be power of 2
     unsigned int mask = (unsigned int) ~0;

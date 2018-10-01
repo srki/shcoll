@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "broadcast.h"
 #include <stdio.h>
 #include <string.h>

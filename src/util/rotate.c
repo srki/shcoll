@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/18/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include <stdlib.h>
 #include <memory.h>
@@ -57,7 +57,9 @@ rotate_inplace(char *arr, size_t size, size_t dist)
     }
 }
 
-void rotate(char *arr, size_t size, size_t dist) {
+void
+rotate(char *arr, size_t size, size_t dist)
+{
     char *tmp = malloc(dist);
 
     memcpy(tmp, arr + (size - dist), dist);

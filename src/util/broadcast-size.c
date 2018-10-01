@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 6/11/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include "broadcast-size.h"
 #include "trees.h"
@@ -9,7 +9,9 @@
 
 const int binomial_tree_radix = 8;
 
-void broadcast_size(size_t *value, int PE_root, int PE_start, int logPE_stride, int PE_size, long *pSync) {
+void
+broadcast_size(size_t *value, int PE_root, int PE_start, int logPE_stride, int PE_size, long *pSync)
+{
     const int me = shmem_my_pe();
     const int stride = 1 << logPE_stride;
 

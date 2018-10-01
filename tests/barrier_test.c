@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "barrier.h"
 #include <stdio.h>
 #include <stdlib.h>

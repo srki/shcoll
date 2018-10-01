@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #include "shcoll.h"
 #include "shcoll/compat.h"
 #include "util/trees.h"

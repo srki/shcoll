@@ -1,11 +1,13 @@
-//
-// Created by Srdan Milakovic on 5/24/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include "../shcoll.h"
 #include "scan.h"
 
-void exclusive_prefix_sum(size_t *dest, size_t value, int PE_start, int logPE_stride, int PE_size, long *pSync) {
+void
+exclusive_prefix_sum(size_t *dest, size_t value, int PE_start, int logPE_stride, int PE_size, long *pSync)
+{
     const int stride = 1 << logPE_stride;
     const int me = shmem_my_pe();
     const int me_as = (me - PE_start) / stride;

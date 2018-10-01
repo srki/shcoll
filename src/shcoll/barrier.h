@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #ifndef _SHCOLL_BARRIER_H
 #define _SHCOLL_BARRIER_H 1
 

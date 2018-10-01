@@ -1,3 +1,7 @@
+/*
+ * For license: see LICENSE file at top-level
+ */
+
 #ifndef _SHCOLL_BROADCAST_H
 #define _SHCOLL_BROADCAST_H 1
 

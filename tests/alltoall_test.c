@@ -1,6 +1,6 @@
-//
-// Created by Srdan Milakovic on 5/21/18.
-//
+/*
+ * For license: see LICENSE file at top-level
+ */
 
 #include "alltoall.h"
 #include <string.h>
