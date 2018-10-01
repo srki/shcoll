@@ -33,77 +33,103 @@ edge_color(int i, int me, int npes)
 
 
 #define SHCOLL_ALLTOALLS_BARRIER_DEFINITION(_name, _size, _peer, _cond, _nbi) \
-    void shcoll_alltoalls##_size##_##_name##_barrier##_nbi(void *dest, const void *source, ptrdiff_t dst, \
-                                                           ptrdiff_t sst, size_t nelems, int PE_start, \
-                                                           int logPE_stride, int PE_size, long *pSync) {  \
-        const int stride = 1 << logPE_stride;                           \
-        const int me = shmem_my_pe();                                   \
-                                                                        \
-        /* Get my index in the active set */                            \
-        /* const int me_as = (me - PE_start) / stride; */               \
-                                                                        \
-        void *const dest_ptr = ((uint8_t *) dest) + me * dst * nelems * ((_size) / CHAR_BIT); \
-        void const *source_ptr = ((uint8_t *) source) + me * sst * nelems * ((_size) / CHAR_BIT); \
-                                                                        \
-        int i;                                                          \
-        int peer_as;                                                    \
-                                                                        \
-        assert(_cond);                                                  \
-                                                                        \
-        for (i = 0; i < nelems; i++) {                                  \
-            *(((uint##_size##_t*) dest_ptr) + i * dst) = *(((uint##_size##_t*) source_ptr) + i * sst); \
-        }                                                               \
-                                                                        \
-        for (i = 1; i < PE_size; i++) {                                 \
-            peer_as = _peer(i, me, PE_size);                            \
-            source_ptr = ((uint8_t *) source) + peer_as * sst * nelems * ((_size) / CHAR_BIT); \
-                                                                        \
-            shmem_iput##_size##_nbi(dest_ptr, source_ptr, dst, sst, nelems, PE_start + peer_as * stride); \
-        }                                                               \
-                                                                        \
-        /* TODO: change to auto shcoll barrier */                       \
-        shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size, pSync); \
-    }                                                                   \
+    void                                                                    \
+    shcoll_alltoalls##_size##_##_name##_barrier##_nbi(void *dest,           \
+                                                      const void *source,   \
+                                                      ptrdiff_t dst,        \
+                                                      ptrdiff_t sst,        \
+                                                      size_t nelems,        \
+                                                      int PE_start,         \
+                                                      int logPE_stride,     \
+                                                      int PE_size,          \
+                                                      long *pSync) {        \
+        const int stride = 1 << logPE_stride;                               \
+        const int me = shmem_my_pe();                                       \
+                                                                            \
+        /* Get my index in the active set */                                \
+        /* const int me_as = (me - PE_start) / stride; */                   \
+                                                                            \
+        void *const dest_ptr = ((uint8_t *) dest) +                         \
+                               me * dst * nelems * ((_size) / CHAR_BIT);    \
+        void const *source_ptr = ((uint8_t *) source) +                     \
+                               me * sst * nelems * ((_size) / CHAR_BIT);    \
+                                                                            \
+        int i;                                                              \
+        int peer_as;                                                        \
+                                                                            \
+        assert(_cond);                                                      \
+                                                                            \
+        for (i = 0; i < nelems; i++) {                                      \
+            *(((uint##_size##_t*) dest_ptr) + i * dst) =                    \
+                            *(((uint##_size##_t*) source_ptr) + i * sst);   \
+        }                                                                   \
+                                                                            \
+        for (i = 1; i < PE_size; i++) {                                     \
+            peer_as = _peer(i, me, PE_size);                                \
+            source_ptr = ((uint8_t *) source) +                             \
+                             peer_as * sst * nelems * ((_size) / CHAR_BIT); \
+                                                                            \
+            shmem_iput##_size##_nbi(dest_ptr, source_ptr, dst, sst,         \
+                                      nelems, PE_start + peer_as * stride); \
+        }                                                                   \
+                                                                            \
+        /* TODO: change to auto shcoll barrier */                           \
+        shcoll_barrier_binomial_tree(PE_start, logPE_stride, PE_size,       \
+                                     pSync);                                \
+    }                                                                       \
 
 #define SHCOLL_ALLTOALLS_COUNTER_DEFINITION(_name, _size, _peer, _cond, _nbi) \
-    void shcoll_alltoalls##_size##_##_name##_counter##_nbi(void *dest, const void *source, ptrdiff_t dst, \
-                                                           ptrdiff_t sst, size_t nelems, int PE_start, \
-                                                           int logPE_stride, int PE_size, long *pSync) {  \
-        const int stride = 1 << logPE_stride;                           \
-        const int me = shmem_my_pe();                                   \
-                                                                        \
-        /* Get my index in the active set */                            \
-        const int me_as = (me - PE_start) / stride;                     \
-                                                                        \
-        void *const dest_ptr = ((uint8_t *) dest) + me * dst * nelems * ((_size) / CHAR_BIT); \
-        void const *source_ptr = ((uint8_t *) source) + me * sst * nelems * ((_size) / CHAR_BIT); \
-                                                                        \
-        int i;                                                          \
-        int peer_as;                                                    \
-                                                                        \
-        assert(_cond);                                                  \
-                                                                        \
-        for (i = 0; i < nelems; i++) {                                  \
-            *(((uint##_size##_t*) dest_ptr) + i * dst) = *(((uint##_size##_t*) source_ptr) + i * sst); \
-        }                                                               \
-                                                                        \
-        for (i = 1; i < PE_size; i++) {                                 \
-            peer_as = _peer(i, me, PE_size);                            \
-            source_ptr = ((uint8_t *) source) + peer_as * sst * nelems * ((_size) / CHAR_BIT); \
-                                                                        \
-            shmem_iput##_size##_nbi(dest_ptr, source_ptr, dst, sst, nelems, PE_start + peer_as * stride); \
-        }                                                               \
-                                                                        \
-        shmem_fence();                                                  \
-                                                                        \
-        for (i = 1; i < PE_size; i++) {                                 \
-            peer_as = _peer(i, me_as, PE_size);                         \
-            shmem_long_atomic_inc(pSync, PE_start + peer_as * stride);  \
-        }                                                               \
-                                                                        \
-        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE + PE_size - 1); \
-        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                     \
-    }                                                                   \
+    void                                                                    \
+    shcoll_alltoalls##_size##_##_name##_counter##_nbi(void *dest,           \
+                                                      const void *source,   \
+                                                      ptrdiff_t dst,        \
+                                                      ptrdiff_t sst,        \
+                                                      size_t nelems,        \
+                                                      int PE_start,         \
+                                                      int logPE_stride,     \
+                                                      int PE_size,          \
+                                                      long *pSync) {        \
+        const int stride = 1 << logPE_stride;                               \
+        const int me = shmem_my_pe();                                       \
+                                                                            \
+        /* Get my index in the active set */                                \
+        const int me_as = (me - PE_start) / stride;                         \
+                                                                            \
+        void *const dest_ptr = ((uint8_t *) dest) +                         \
+                                me * dst * nelems * ((_size) / CHAR_BIT);   \
+        void const *source_ptr = ((uint8_t *) source) +                     \
+                                  me * sst * nelems * ((_size) / CHAR_BIT); \
+                                                                            \
+        int i;                                                              \
+        int peer_as;                                                        \
+                                                                            \
+        assert(_cond);                                                      \
+                                                                            \
+        for (i = 0; i < nelems; i++) {                                      \
+            *(((uint##_size##_t*) dest_ptr) + i * dst) =                    \
+                        *(((uint##_size##_t*) source_ptr) + i * sst);       \
+        }                                                                   \
+                                                                            \
+        for (i = 1; i < PE_size; i++) {                                     \
+            peer_as = _peer(i, me, PE_size);                                \
+            source_ptr = ((uint8_t *) source) +                             \
+                peer_as * sst * nelems * ((_size) / CHAR_BIT);              \
+                                                                            \
+            shmem_iput##_size##_nbi(dest_ptr, source_ptr, dst, sst, nelems, \
+                                    PE_start + peer_as * stride);           \
+        }                                                                   \
+                                                                            \
+        shmem_fence();                                                      \
+                                                                            \
+        for (i = 1; i < PE_size; i++) {                                     \
+            peer_as = _peer(i, me_as, PE_size);                             \
+            shmem_long_atomic_inc(pSync, PE_start + peer_as * stride);      \
+        }                                                                   \
+                                                                            \
+        shmem_long_wait_until(pSync, SHMEM_CMP_EQ, SHCOLL_SYNC_VALUE +      \
+                              PE_size - 1);                                 \
+        shmem_long_p(pSync, SHCOLL_SYNC_VALUE, me);                         \
+    }                                                                       \
 
 
 #define SHCOLL_ALLTOALL_DEFINITION(_macro, _name, _peer, _cond, _nbi)       \
