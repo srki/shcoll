@@ -5,7 +5,7 @@
 #ifndef _SHCOLL_H
 #define _SHCOLL_H 1
 
-#include <shmem.h>
+// #include <shmem.h>
 
 #include <shcoll/common.h>
 // #include <shcoll/compat.h>

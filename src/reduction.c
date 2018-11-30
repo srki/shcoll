@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#include <shmem.h>
+
 /*
  * Local reduce helper
  */

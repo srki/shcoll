@@ -6,6 +6,8 @@
 #include "util/trees.h"
 #include "util/memfence.h"
 
+#include <shmem.h>
+
 static int tree_degree_barrier = 2;
 static int knomial_tree_radix_barrier = 2;
 
