@@ -52,8 +52,8 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
         /* Get my index in the active set */                                \
         const int me_as = (me - PE_start) / stride;                         \
                                                                             \
-        void *const dest_ptr = ((uint8_t *) dest) + me * nelems;            \
-        void const *source_ptr = ((uint8_t *) source) + me * nelems;        \
+        void *const dest_ptr = ((uint8_t *) dest) + me_as * nelems;         \
+        void const *source_ptr = ((uint8_t *) source) + me_as * nelems;     \
                                                                             \
         int i;                                                              \
         int peer_as;                                                        \
@@ -93,7 +93,7 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
         /* Get my index in the active set */                                \
         const int me_as = (me - PE_start) / stride;                         \
                                                                             \
-        void *const dest_ptr = ((uint8_t *) dest) + me * nelems;            \
+        void *const dest_ptr = ((uint8_t *) dest) + me_as * nelems;         \
         void const *source_ptr;                                             \
                                                                             \
         int i;                                                              \
@@ -109,7 +109,7 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
                              PE_start + peer_as * stride);                  \
         }                                                                   \
                                                                             \
-        source_ptr = ((uint8_t *) source) + me * nelems;                    \
+        source_ptr = ((uint8_t *) source) + me_as * nelems;                 \
         memcpy(dest_ptr, source_ptr, nelems);                               \
                                                                             \
         shmem_fence();                                                      \
@@ -134,9 +134,9 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
         const int me = shmem_my_pe();                                       \
                                                                             \
         /* Get my index in the active set */                                \
-        /* const int me_as = (me - PE_start) / stride; */                   \
+        const int me_as = (me - PE_start) / stride;                         \
                                                                             \
-        void *const dest_ptr = ((uint8_t *) dest) + me * nelems;            \
+        void *const dest_ptr = ((uint8_t *) dest) + me_as * nelems;         \
         void const *source_ptr;                                             \
                                                                             \
         assert(_cond);                                                      \
@@ -145,7 +145,7 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
         int peer_as;                                                        \
                                                                             \
         for (i = 1; i < PE_size; i++) {                                     \
-            peer_as = _peer(i, me, PE_size);                                \
+            peer_as = _peer(i, me_as, PE_size);                             \
             source_ptr = ((uint8_t *) source) + peer_as * nelems;           \
                                                                             \
             shmem_putmem_signal_nb(dest_ptr, source_ptr, nelems,            \
@@ -153,7 +153,7 @@ shcoll_set_alltoalls_round_sync(int rounds_sync)
                                    PE_start + peer_as * stride, NULL);      \
         }                                                                   \
                                                                             \
-        source_ptr = ((uint8_t *) source) + me * nelems;                    \
+        source_ptr = ((uint8_t *) source) + me_as * nelems;                 \
         memcpy(dest_ptr, source_ptr, nelems);                               \
                                                                             \
         for (i = 1; i < PE_size; i++) {                                     \
