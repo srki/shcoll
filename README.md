@@ -6,7 +6,7 @@ Welcome to the OpenSHMEM Collective Routines Library! This library provides a se
 
 The collective routines implemented in this repository, along with a comprehensive performance analysis, have been detailed in the following publication:
 
-Milaković, Srđan, Oguz Selvitopi, Israt Nisa, Zoran Budimlić, and Aydin Buluç. "Parallel algorithms for masked sparse matrix-matrix products." In Proceedings of the 51st International Conference on Parallel Processing, pp. 1-11. 2022.
+Milaković S, Budimlić Z, Pritchard H, Curtis A, Chapman B, Sarkar V. Shcoll-a standalone implementation of openshmem-style collectives api. InOpenSHMEM and Related Technologies. OpenSHMEM in the Era of Extreme Heterogeneity: 5th Workshop, OpenSHMEM 2018, Baltimore, MD, USA, August 21–23, 2018, Revised Selected Papers 5 2019 (pp. 90-106). Springer International Publishing.
 
 [Publication link](https://link.springer.com/chapter/10.1007/978-3-030-04918-8_6)
 
